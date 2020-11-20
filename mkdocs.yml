@@ -1,0 +1,6 @@
+site_name: My Docs
+nav:
+    - Home: index.md
+    - About: about.md
+    - How to maintain this doc page: how_to_maintain_doc.md
+theme: readthedocs    
