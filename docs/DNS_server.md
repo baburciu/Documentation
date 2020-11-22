@@ -1,10 +1,10 @@
 # Create a docker-compose container on an Ubuntu20.04 VM
  
 ## 0. How to install:
-  uninstall current Docker Engine:
+ >  - uninstall current Docker Engine:
 boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io containerd runc  `  <br/>
 
-  install docker from upstream Docker by script:
+ >  - install docker from upstream Docker by script:
 boburciu@dns:~/DNS_server$ ` curl -fsSL https://get.docker.com -o get-docker.sh  `  <br/>
 boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
 
@@ -48,7 +48,6 @@ boburciu@dns:~/DNS_server$ ` cat docker-compose.yml  `  <br/>
 boburciu@dns:~/DNS_server$
 
  >  - create DNS server as container:
-
 boburciu@dns:~/DNS_server$
 boburciu@dns:~/DNS_server$ ` sudo docker-compose up  `  <br/>
 Pulling bind_DNS_server_container (sameersbn/bind:latest)...
