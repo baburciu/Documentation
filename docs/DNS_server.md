@@ -8,22 +8,24 @@ boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io 
 boburciu@dns:~/DNS_server$ ` curl -fsSL https://get.docker.com -o get-docker.sh  `  <br/>
 boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
 
-  # install Docker Compose (run this command to download the current stable release of Docker Compose):
+ >  - install Docker Compose (run this command to download the current stable release of Docker Compose):
 [boburciu@r220 ~]$ ` sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  `  <br/>
 [sudo] password for boburciu:
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
 100   651  100   651    0     0   2206      0 --:--:-- --:--:-- --:--:--  2214
 100 11.6M  100 11.6M    0     0  3735k      0  0:00:03  0:00:03 --:--:-- 4521k  
-  # apply executable permissions to the docker-compose binary:
+
+ >  - apply executable permissions to the docker-compose binary:
 [boburciu@r220 ~]$ ` sudo chmod +x /usr/local/bin/docker-compose  `  <br/>
 [boburciu@r220 ~]$
-  # test docker-compose installation:
+
+ >  - test docker-compose installation:
 [boburciu@r220 ~]$ ` docker-compose --version  `  <br/>
 docker-compose version 1.27.4, build 40524192
 [boburciu@r220 ~]$
 
-  # create docker.compose.yml
+ >  - create docker.compose.yml
 boburciu@dns:~/DNS_server$ pwd
 /home/boburciu/DNS_server
 boburciu@dns:~/DNS_server$ ls -l
@@ -45,7 +47,7 @@ boburciu@dns:~/DNS_server$ ` cat docker-compose.yml  `  <br/>
         - /srv/docker/bind:/BM_VMs/data
 boburciu@dns:~/DNS_server$
 
-  # create DNS server as container:
+ >  - create DNS server as container:
 
 boburciu@dns:~/DNS_server$
 boburciu@dns:~/DNS_server$ ` sudo docker-compose up  `  <br/>
@@ -69,9 +71,9 @@ bind_DNS_server_container_1  | Starting named...
 bind_DNS_server_container_1  | 22-Nov-2020 15:09:50.912 starting BIND 9.16.1-Ubuntu (Stable Release) <id:d497c32>
 bind_DNS_server_container_1  | 22-Nov-2020 15:09:50.912 running on Linux x86_64t
 
-  # Connect to https://192.168.122.64:10000/ from CentOS host with username `root` and password `password`.
+ >  - Connect to https://192.168.122.64:10000/ from CentOS host with username `root` and password `password`.
 
-  # stop container with `CTRL+C`:
+ >  - stop container with `CTRL+C`:
 
 ^CGracefully stopping... (press Ctrl+C again to force)
 Stopping dns_server_bind_DNS_server_container_1 ... done
