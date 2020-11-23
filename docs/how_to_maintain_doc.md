@@ -1,17 +1,28 @@
-# Maintain doc by [markdown syntax](https://www.markdownguide.org/basic-syntax/)
+# Maintain doc by [markdown syntax](https://www.markdownguide.org/basic-syntax/) & [tips](https://guides.github.com/features/mastering-markdown/)
  
 ## 0. How to format:
-
- >  - to start the localhost auto-reloading webserver of http://127.0.0.1:8000
-
+<br/>
+ >  - to start the localhost auto-reloading webserver of http://127.0.0.1:8000<br/>
+<br/>
 [boburciu@r220 ~]$ `cd Work_documenting/KVM-notes-proj/ `  <br/>
-[boburciu@r220 KVM-notes-proj]$ `mkdocs serve`
-
- >  - for code blocks, in order to preserve newline: 
+[boburciu@r220 KVM-notes-proj]$ `mkdocs serve`<br/>
+<br/>
+ >  - for code blocks, in order to preserve newline: <br/>
   >>  1. select text, then `ALT+SHIFT+I`; <br/>
-  >>  2. then add `"<br/>"` without spaces to the end on line;
-
- >  - for section hints just add ">" and then "-"before the line.
+  >>  2. then add `"<br/>"` without spaces to the end on line;<br/>
+<br/>
+ >  - for section hints just add ">" and then "-"before the line.<br/>
+<br/>
+ >  - to highlight:<br/>
+\*This text will be italic\*<br/>
+\_This will also be italic\_<br/>
+<br/>
+\*\*This text will be bold\*\*<br/>
+\_\_This will also be bold\_\_<br/>
+<br/>
+\_You \*\*can\*\* combine them\_<br/>
+<br/>
+ >  - to stop for interprating, escape chars with "\"
 
 ## I. How to add page to doc main page:
 
