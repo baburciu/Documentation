@@ -3,5 +3,5 @@ nav:
     - Home: index.md
     - About: about.md
     - How to maintain this doc page: how_to_maintain_doc.md
-    - How to create DNS server: DNS_server.md    
+    - How to create & use BIND DNS server: DNS_server.md    
 theme: readthedocs    

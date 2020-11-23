@@ -8,7 +8,7 @@
 [boburciu@r220 KVM-notes-proj]$ `mkdocs serve`
 
  >  - for code blocks, in order to preserve newline: 
-  >>  1. select text, then `ALT+SHIT+I`; <br/>
+  >>  1. select text, then `ALT+SHIFT+I`; <br/>
   >>  2. then add `"<br/>"` without spaces to the end on line;
 
  >  - for section hints just add ">" and then "-"before the line.
