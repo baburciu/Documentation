@@ -80,6 +80,7 @@ Stopping dns_server_bind_DNS_server_container_1 ... done<br/>
 boburciu@dns:~/DNS_server$<br/>
 
 ## I. How to make BIND container autostart once VM boots:
+ <br/>
  >  -  have docker.service enabled on system startup: <br/>
 boburciu@dns:~/DNS_server$ ` sudo systemctl enable docker ` <br/>
 Synchronizing state of docker.service with SysV service script with /lib/systemd/systemd-sysv-install. <br/>
