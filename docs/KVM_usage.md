@@ -34,4 +34,23 @@ vnet0      network    default    virtio      52:54:00:69:8a:08<br/>
 <br/>
 [boburciu@r220 ~]$<br/>
 
+```
+[boburciu@r220 ~]$ # ansible rancheros -m command -a "hostnamectl status" --extra-vars "ansible_user=rancher ansible_password=rancher" -v
+Using /etc/ansible/ansible.cfg as config file
+[WARNING]: No python interpreters found for host 192.168.122.155 (tried
+['/usr/bin/python', 'python3.7', 'python3.6', 'python3.5', 'python2.7',
+'python2.6', '/usr/libexec/platform-python', '/usr/bin/python3', 'python'])
+192.168.122.155 | FAILED! => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": false, 
+    "module_stderr": "Shared connection to 192.168.122.155 closed.\r\n", 
+    "module_stdout": "/bin/sh: /usr/bin/python: No such file or directory\r\n", 
+    "msg": "The module failed to execute correctly, you probably need to set the interpreter.\nSee stdout/stderr for the exact error", 
+    "rc": 127
+}
+[boburciu@r220 ~]$ 
+```
+
 ## Further sections
