@@ -35,7 +35,7 @@ vnet0      network    default    virtio      52:54:00:69:8a:08<br/>
 [boburciu@r220 ~]$<br/>
 
 ```
-[boburciu@r220 ~]$ # ansible rancheros -m command -a "hostnamectl status" --extra-vars "ansible_user=rancher ansible_password=rancher" -v
+[boburciu@r220 ~]$ # ` ansible rancheros -m command -a "hostnamectl status" --extra-vars "ansible_user=rancher ansible_password=rancher" -v `
 Using /etc/ansible/ansible.cfg as config file
 [WARNING]: No python interpreters found for host 192.168.122.155 (tried
 ['/usr/bin/python', 'python3.7', 'python3.6', 'python3.5', 'python2.7',
