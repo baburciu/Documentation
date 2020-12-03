@@ -1,8 +1,10 @@
 # Managing RKE Kubernetes cluster
  
 ## 0. Setup RKE:
- >  - Considering [official RKE installation guide](https://rancher.com/docs/rke/latest/en/installation/) and downloading from [GitHub RKE release v1.2.3 with K8s v1.19 support](https://github.com/rancher/rke/releases/tag/v1.2.3) we followed [automation guidelines](https://computingforgeeks.com/install-kubernetes-production-cluster-using-rancher-rke/)
- >  - download the RKE binary to a folder in your $PATH, like */usr/local/bin*, and rename it *rke*. Then verify supported versions (including v1.19 for CKAD as of Dec 2020)) <br/>
+
+ ### - Considering [official RKE installation guide](https://rancher.com/docs/rke/latest/en/installation/) and downloading from [GitHub RKE release v1.2.3 with K8s v1.19 support](https://github.com/rancher/rke/releases/tag/v1.2.3) we followed [automation guidelines](https://computingforgeeks.com/install-kubernetes-production-cluster-using-rancher-rke/)
+
+ ### - download the RKE binary to a folder in your $PATH, like */usr/local/bin*, and rename it *rke*. Then verify supported versions (including v1.19 for CKAD as of Dec 2020)) <br/>
 `sudo wget https://github.com/rancher/rke/releases/download/v1.2.3/rke_linux-amd64 --directory-prefix=/usr/local/bin` <br/>
 `sudo mv /usr/local/bin/rke_linux-amd64 /usr/local/bin/rke` <br/>
 `sudo chmod +x /usr/local/bin/rke` <br/>
