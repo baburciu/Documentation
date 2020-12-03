@@ -1,15 +1,15 @@
 # Create a docker-compose container on an Ubuntu20.04 VM
  
 ## 0. How to install:
- >  - uninstall current Docker Engine:<br/>
+ ### - uninstall current Docker Engine:<br/>
 boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io containerd runc  `  
 
  ### - install docker from upstream Docker by script:<br/>
 boburciu@dns:~/DNS_server$ ` curl -fsSL https://get.docker.com -o get-docker.sh  `  <br/>
 boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
 
- >  - install Docker Compose (run this command to download the current stable release of Docker Compose):<br/> 
-[boburciu@r220 ~]$ ` sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  `   <br/>
+ ### - install Docker Compose (run this command to download the current stable release of Docker Compose):<br/> 
+boburciu@dns:~/DNS_server$ ` sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  `   <br/>
 [sudo] password for boburciu: <br/>
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current <br/>
                                  Dload  Upload   Total   Spent    Left  Speed <br/>
@@ -18,14 +18,14 @@ boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
 
 
  ### - apply executable permissions to the docker-compose binary:<br/>
-[boburciu@r220 ~]$ ` sudo chmod +x /usr/local/bin/docker-compose  `  <br/>
-[boburciu@r220 ~]$<br/>
+boburciu@dns:~/DNS_server$ ` sudo chmod +x /usr/local/bin/docker-compose  `  <br/>
+boburciu@dns:~/DNS_server$<br/>
 
 
  ### - test docker-compose installation:<br/>
-[boburciu@r220 ~]$ ` docker-compose --version  `  <br/>
+boburciu@dns:~/DNS_server$ ` docker-compose --version  `  <br/>
 docker-compose version 1.27.4, build 40524192 <br/>
-[boburciu@r220 ~]$<br/>
+boburciu@dns:~/DNS_server$<br/>
 
 
  ### - create docker.compose.yml<br/>
