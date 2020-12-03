@@ -2,30 +2,29 @@
  
 ## 0. How to install:
  >  - uninstall current Docker Engine:<br/>
-boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io containerd runc  `  <br/>
-<br/>
- >  - install docker from upstream Docker by script:<br/>
+boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io containerd runc  `  
+ > - install docker from upstream Docker by script:<br/>
 boburciu@dns:~/DNS_server$ ` curl -fsSL https://get.docker.com -o get-docker.sh  `  <br/>
 boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
-<br/>
- >  - install Docker Compose (run this command to download the current stable release of Docker Compose):<br/>
+
+ >  - install Docker Compose (run this command to download the current stable release of Docker Compose):<br/> 
 [boburciu@r220 ~]$ ` sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose  `   <br/>
 [sudo] password for boburciu: <br/>
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current <br/>
                                  Dload  Upload   Total   Spent    Left  Speed <br/>
 100   651  100   651    0     0   2206      0 --:--:-- --:--:-- --:--:--  2214 <br/>
 100 11.6M  100 11.6M    0     0  3735k      0  0:00:03  0:00:03 --:--:-- 4521k   <br/>
-<br/>
- >  - apply executable permissions to the docker-compose binary:<br/>
+
+ > - apply executable permissions to the docker-compose binary:<br/>
 [boburciu@r220 ~]$ ` sudo chmod +x /usr/local/bin/docker-compose  `  <br/>
 [boburciu@r220 ~]$<br/>
-<br/>
- >  - test docker-compose installation:<br/>
+
+ > - test docker-compose installation:<br/>
 [boburciu@r220 ~]$ ` docker-compose --version  `  <br/>
 docker-compose version 1.27.4, build 40524192 <br/>
 [boburciu@r220 ~]$<br/>
-<br/>
- >  - create docker.compose.yml<br/>
+
+ > - create docker.compose.yml<br/>
 boburciu@dns:~/DNS_server$ pwd <br/>
 /home/boburciu/DNS_server <br/>
 boburciu@dns:~/DNS_server$ ls -l <br/>
@@ -33,6 +32,7 @@ total 4 <br/>
 -rw-rw-r-- 1 boburciu boburciu 317 Nov 22 15:01 docker-compose.yml <br/>
 boburciu@dns:~/DNS_server$ <br/>
 boburciu@dns:~/DNS_server$ ` cat docker-compose.yml  `   <br/>
+```
     # https://hub.docker.com/r/sameersbn/bind <br/>
     bind_DNS_server_container: <br/>
       restart: always <br/> 
@@ -47,10 +47,12 @@ boburciu@dns:~/DNS_server$ ` cat docker-compose.yml  `   <br/>
       volumes: <br/>
         - /srv/docker/bind:/BM_VMs/data <br/>
 boburciu@dns:~/DNS_server$ <br/>
- <br/>
- >  - create DNS server as container: <br/>
+```
+
+ > - create DNS server as container: <br/>
 boburciu@dns:~/DNS_server$ <br/>
 boburciu@dns:~/DNS_server$ ` sudo docker-compose up  `   <br/>
+```
 Pulling bind_DNS_server_container (sameersbn/bind:latest)... <br/>
 latest: Pulling from sameersbn/bind <br/>
 d51af753c3d3: Pull complete <br/>
@@ -70,26 +72,27 @@ bind_DNS_server_container_1  | Starting webmin... <br/>
 bind_DNS_server_container_1  | Starting named... <br/>
 bind_DNS_server_container_1  | 22-Nov-2020 15:09:50.912 starting BIND 9.16.1-Ubuntu (Stable Release) <id:d497c32> <br/>
 bind_DNS_server_container_1  | 22-Nov-2020 15:09:50.912 running on Linux x86_64t <br/>
-<br/>
- >  - Connect to https://192.168.122.64:10000/ from CentOS host with username `root` and password `password`.<br/>
-<br/>
- >  - stop container with `CTRL+C`:<br/>
+```
+
+ > - Connect to https://192.168.122.64:10000/ from CentOS host with username `root` and password `password`.<br/>
+
+ > - stop container with `CTRL+C`:<br/>
 <br/>
 ^CGracefully stopping... (press Ctrl+C again to force)<br/>
 Stopping dns_server_bind_DNS_server_container_1 ... done<br/>
 boburciu@dns:~/DNS_server$<br/>
 
 ## I. How to make BIND container autostart once VM boots:
- <br/>
- >  -  have docker.service enabled on system startup: <br/>
+ 
+ > -  have docker.service enabled on system startup: <br/>
 boburciu@dns:~/DNS_server$ `sudo systemctl enable docker` <br/>
 Synchronizing state of docker.service with SysV service script with /lib/systemd/systemd-sysv-install. <br/>
 Executing: /lib/systemd/systemd-sysv-install enable docker <br/>
 boburciu@dns:~/DNS_server$ <br/>
- <br/>
- >  -  have `restart: always` added in docker-compose.yml <br/>
- <br/>
- >  -  run once (prior to the reboot) the `docker-compose up -d`: <br/>
+ 
+ > -  have `restart: always` added in docker-compose.yml <br/>
+ 
+ > -  run once (prior to the reboot) the `docker-compose up -d`: <br/>
 boburciu@dns:~/DNS_server$ <br/>
 boburciu@dns:~/DNS_server$ sudo docker-compose up -d<br/>
 Recreating dns_server_bind_DNS_server_container_1 ... done<br/>
@@ -105,14 +108,14 @@ boburciu@dns:~$<br/>
 boburciu@dns:~$<br/>
 
 ## II. How to configure DNS record via Webmin GUI:
- <br/>
- >  -  1. BIND Server => Create Master zone (boburciu.privatecloud.com) <br/>
- <br/>
- >  -  2. Address => add new record <br/>
- <br/>
- >  -  3. Return to zone, then Apply Configuration (reload button on top left side) <br/>
- <br/>
- >  -  4. On DNS clients: add the DNS server in /etc/resolv.conf, add "dns=none" under "[main]" in /etc/NetworkManager/NetworkManager.conf and restart NetworkManager service <br/>
+ 
+ > -  1. BIND Server => Create Master zone (boburciu.privatecloud.com) <br/>
+ 
+ > -  2. Address => add new record <br/>
+ 
+ > -  3. Return to zone, then Apply Configuration (reload button on top left side) <br/>
+ 
+ > -  4. On DNS clients: add the DNS server in /etc/resolv.conf, add "dns=none" under "[main]" in /etc/NetworkManager/NetworkManager.conf and restart NetworkManager service <br/>
 [boburciu@r220 KVM-notes-proj]$ ` cat /etc/resolv.conf ` <br/>
 search local boburciu <br/>
 *nameserver 192.168.122.64* <br/>
