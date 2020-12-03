@@ -43,6 +43,9 @@ vnet0      network    default    virtio      52:54:00:69:8a:08
 [boburciu@r220 ~]$
 ```
 
+### - Unattended install
+` sudo virt-install --name=rkem1 --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkem1.qcow2,size=20 `
+
 ## II. How to create Linux ISO for unattended install:
 
  ### - Using the project [linux-unattended-installation](https://github.com/coreprocess/linux-unattended-installation)
