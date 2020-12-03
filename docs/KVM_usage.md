@@ -12,41 +12,7 @@
 
  ### - virt-manager will start with "QEMU/KVM user session" connection <br/>
 
-## I. How to create KVM:
-
- ### - Commands for [KVM networking](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-managing_guest_virtual_machines_with_virsh-managing_virtual_networks)
-
- ### - Commands for [interface statistics](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-statlists)
-
-[boburciu@r220 ~]$ ` sudo virt-install --name=ubuntu1804cmd --ram=1024 --vcpus=1 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04.5-live-server-amd64.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkeM1cmd.qcow2,size=20 `<br/>
-[boburciu@r220 ~]$ <br/>
-[boburciu@r220 ~]$ ` sudo virsh list --all `<br/>
-```
- Id    Name                           State
-----------------------------------------------------
- 1     DNSubuntu18.04                 running
- -     RancherOSm2                    shut off
- -     rke_master1                    shut off
- -     rke_master2                    shut off
- -     rke_worker1                    shut off
- -     rke_worker2                    shut off
- -     rke_worker3                    shut off
- -     rke_worker4                    shut off
- -     ubuntu20.04M1                  shut off
-```
-[boburciu@r220 ~]$ ` sudo virsh domiflist DNSubuntu18.04 `
-```
-Interface  Type       Source     Model       MAC<br/>
--------------------------------------------------------
-vnet0      network    default    virtio      52:54:00:69:8a:08
-
-[boburciu@r220 ~]$
-```
-
-### - Unattended install:
-` sudo virt-install --name=rkem1 --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkem1.qcow2,size=20 `
-
-## II. How to create Linux ISO for unattended install:
+## I. How to create Linux ISO for unattended install:
 
  ### - Using the project [linux-unattended-installation](https://github.com/coreprocess/linux-unattended-installation)
 [boburciu@r220 ~]$ ` ssh boburciu@192.168.122.64 `
@@ -115,7 +81,7 @@ boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
 
  ### - The container which will create the ISO takes as argument the public SSH key for the current user (*/home/boburciu/.ssh/id_rsa.pub*) and copies it in the ISO's /root/.ssh/id_rsa.pub so that current user can start an SSH session with user root to the VM where the ISO is mounted. To ensure the CentOS host can SSH to the VM from ISO:
- ###  - 1. we first delete the key pair from current VM w Docker 
+ #### - 1. we first delete the key pair from current VM w Docker 
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` ls -lth /home/boburciu/.ssh/ `
 ```
 total 12K
@@ -132,7 +98,7 @@ total 4.0K
 -rw-r--r-- 1 boburciu boburciu 666 Dec  3 18:13 known_hosts
 boburciu@dns:~/.ssh$
 ```
- ###  - 2. then copy the SSH key pair from the CentOS host to the Ubuntu18.04 VM w Docker where we create this container.
+ #### - 2. then copy the SSH key pair from the CentOS host to the Ubuntu18.04 VM w Docker where we create this container.
 [boburciu@r220 KVM-notes-proj]$ ` cd /home/boburciu/.ssh/ `
 ```
 [boburciu@r220 .ssh]$
@@ -171,7 +137,7 @@ boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ pwd
 /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
-boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \ 
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \
  --rm \
  -t \
  -v "$HOME/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro" \
@@ -281,3 +247,55 @@ total 24G
 [boburciu@r220 ~]$
 ```
 
+## II. How to create KVM and check MAC:
+
+ ### - Commands for [KVM networking](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-managing_guest_virtual_machines_with_virsh-managing_virtual_networks)
+
+ ### - Commands for [interface statistics](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_deployment_and_administration_guide/sect-statlists)
+
+[boburciu@r220 ~]$ ` sudo virt-install --name=ubuntu1804cmd --ram=1024 --vcpus=1 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04.5-live-server-amd64.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkeM1cmd.qcow2,size=20 `<br/>
+[boburciu@r220 ~]$ <br/>
+[boburciu@r220 ~]$ ` sudo virsh list --all `<br/>
+```
+ Id    Name                           State
+----------------------------------------------------
+ 1     DNSubuntu18.04                 running
+ -     RancherOSm2                    shut off
+ -     rke_master1                    shut off
+ -     rke_master2                    shut off
+ -     rke_worker1                    shut off
+ -     rke_worker2                    shut off
+ -     rke_worker3                    shut off
+ -     rke_worker4                    shut off
+ -     ubuntu20.04M1                  shut off
+```
+[boburciu@r220 ~]$ ` sudo virsh domiflist DNSubuntu18.04 `
+```
+Interface  Type       Source     Model       MAC<br/>
+-------------------------------------------------------
+vnet0      network    default    virtio      52:54:00:69:8a:08
+
+[boburciu@r220 ~]$
+```
+
+
+## III. Creating the bare-metal VMs for use in Rancher Kubernetes cluster:
+
+ ### - Using unattended install ISO of Ubuntu18.04:
+  #### - RKE Master Node 1. 
+` sudo virt-install --name=rkem1 --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkem1.qcow2,size=20 `
+
+  #### - RKE Master Node 2. 
+` sudo virt-install --name=rkem2 --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkem2.qcow2,size=20 `
+
+  #### - RKE Worker Node 1. 
+` sudo virt-install --name=rkew1 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew1.qcow2,size=20 `
+
+  #### - RKE Worker Node 2. 
+` sudo virt-install --name=rkew2 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew2.qcow2,size=20 `
+
+  #### - RKE Worker Node 3. 
+` sudo virt-install --name=rkew3 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew3.qcow2,size=20 `
+
+  #### - RKE Worker Node 4. 
+` sudo virt-install --name=rkew4 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew4.qcow2,size=20 `
