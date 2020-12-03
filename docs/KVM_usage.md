@@ -218,8 +218,8 @@ ubuntu-18.04-netboot-amd64-unattended.iso                                       
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
 ``` <br/>
  <br/>
-[boburciu@r220 ~]$  <br/>
-[boburciu@r220 ~]$ ` ls -lth /home/boburciu/Desktop/ISOs/ ` <br/>
+[boburciu@r220 ~]$ 
+[boburciu@r220 ~]$ ` ls -lth /home/boburciu/Desktop/ISOs/ `
 ``` <br/>
 total 24G <br/>
 -rw-r--r--. 1 boburciu boburciu  58M Dec  3 19:17 ubuntu-18.04-netboot-amd64-unattended.iso <br/>
