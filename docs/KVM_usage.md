@@ -43,7 +43,7 @@ vnet0      network    default    virtio      52:54:00:69:8a:08
 [boburciu@r220 ~]$
 ```
 
-## II. How to create Linux iso for unnatended install:
+## II. How to create Linux ISO for unattended install:
 
  ### - Using the project [linux-unattended-installation](https://github.com/coreprocess/linux-unattended-installation)
 [boburciu@r220 ~]$ ` ssh boburciu@192.168.122.64 `
@@ -80,12 +80,12 @@ Last login: Thu Dec  3 13:04:24 2020 from 192.168.122.1
 boburciu@dns:~$
 boburciu@dns:~$
 ```
-boburciu@dns:~$ ` mkdir Linux_unattended-install_iso `
-boburciu@dns:~$ ` cd Linux_unattended-install_iso/ `
-boburciu@dns:~/Linux_unattended-install_iso$ git version
-git version 2.17.1
-boburciu@dns:~/Linux_unattended-install_iso$
-boburciu@dns:~/Linux_unattended-install_iso$ ` git clone https://github.com/coreprocess/linux-unattended-installation.git `
+boburciu@dns:~$ ` mkdir Linux_unattended-install_iso ` <br/>
+boburciu@dns:~$ ` cd Linux_unattended-install_iso/ ` <br/>
+boburciu@dns:~/Linux_unattended-install_iso$ git version <br/>
+git version 2.17.1 <br/>
+boburciu@dns:~/Linux_unattended-install_iso$ <br/>
+boburciu@dns:~/Linux_unattended-install_iso$ ` git clone https://github.com/coreprocess/linux-unattended-installation.git ` <br/>
 ```
 boburciu@dns:~/Linux_unattended-install_iso$ ls
 linux-unattended-installation
@@ -116,14 +116,13 @@ boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ pwd
 /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
-boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
-boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \ 
- --rm \
- -t \
- -v "$HOME/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro" \
- -v "$(pwd):/iso" \
- ubuntu-unattended \
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \ <br/>
+ --rm \<br/>
+ -t \<br/>
+ -v "$HOME/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro" \<br/>
+ -v "$(pwd):/iso" \<br/>
+ ubuntu-unattended \<br/>
  18.04 `
 ``` 
 --2020-12-03 17:08:37--  http://archive.ubuntu.com/ubuntu/dists/bionic/main/installer-amd64/current/images/netboot/mini.iso
@@ -216,7 +215,7 @@ ubuntu-18.04-netboot-amd64-unattended.iso                                       
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
 
-[boburciu@r220 ~]$
+[boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` ls -lth /home/boburciu/Desktop/ISOs/ `
 ```
 total 24G
