@@ -47,10 +47,10 @@ vnet0      network    default    virtio      52:54:00:69:8a:08
 ` sudo virt-install --name=rkem1 --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkem1.qcow2,size=20 `
 
 ## II. How to create Linux ISO for unattended install: <br/>
- <br/>
+ 
  ### - Using the project [linux-unattended-installation](https://github.com/coreprocess/linux-unattended-installation) <br/>
 [boburciu@r220 ~]$ ` ssh boburciu@192.168.122.64 ` <br/>
-``` <br/>
+```  
 boburciu@192.168.122.64's password: <br/>
 Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64) <br/>
  <br/>
@@ -82,14 +82,14 @@ Run 'do-release-upgrade' to upgrade to it. <br/>
 Last login: Thu Dec  3 13:04:24 2020 from 192.168.122.1 <br/>
 boburciu@dns:~$ <br/>
 boburciu@dns:~$ <br/>
-``` <br/>
+```  
 boburciu@dns:~$ ` mkdir Linux_unattended-install_iso `  <br/>
 boburciu@dns:~$ ` cd Linux_unattended-install_iso/ `  <br/>
 boburciu@dns:~/Linux_unattended-install_iso$ git version  <br/>
 git version 2.17.1  <br/>
 boburciu@dns:~/Linux_unattended-install_iso$  <br/>
 boburciu@dns:~/Linux_unattended-install_iso$ ` git clone https://github.com/coreprocess/linux-unattended-installation.git `  <br/>
-``` <br/>
+```  
 boburciu@dns:~/Linux_unattended-install_iso$ ls <br/>
 linux-unattended-installation <br/>
 boburciu@dns:~/Linux_unattended-install_iso$ cd linux-unattended-installation/ <br/>
@@ -101,25 +101,25 @@ drwxrwxr-x 5 boburciu boburciu 4096 Dec  3 16:12 ubuntu <br/>
 -rwxrwxr-x 1 boburciu boburciu  183 Dec  3 16:12 docker-entrypoint.sh <br/>
 -rw-rw-r-- 1 boburciu boburciu 5536 Dec  3 16:12 readme.md <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
-``` <br/>
+```  
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo apt-get upgrade ` <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker build -t ubuntu-unattended . ` <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker image ls ` <br/>
-``` <br/>
+```  
 REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE <br/>
 ubuntu-unattended   latest              9908488a91fd        9 minutes ago       222MB <br/>
 ubuntu              latest              f643c72bc252        7 days ago          72.9MB <br/>
 sameersbn/bind      latest              55516ab380dc        6 months ago        343MB <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
-``` <br/>
- <br/>
+```  
+ 
  ### - Create the one-off container that will create the unattended-install iso <br/>
 ```   <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ pwd <br/>
 /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
-``` <br/>
+```  
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \  <br/>
  --rm \ <br/>
  -t \ <br/>
@@ -204,11 +204,11 @@ drwxrwxr-x 5 boburciu boburciu 4.0K Dec  3 16:12 ubuntu <br/>
 -rwxrwxr-x 1 boburciu boburciu  183 Dec  3 16:12 docker-entrypoint.sh <br/>
 -rw-rw-r-- 1 boburciu boburciu 5.5K Dec  3 16:12 readme.md <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
-``` <br/>
- ### - The ISO /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation/ubuntu-18.04-netboot-amd64-unattended.iso was created on VM running Docker <br/>
+``` 
+ ### - The ISO /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation/ubuntu-18.04-netboot-amd64-unattended.iso was created on VM running Docker 
  ### - Transfer the ISO to KVM CentOs7 host: <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` scp -3 -r ubuntu-18.04-netboot-amd64-unattended.iso boburciu@192.168.100.10:/home/boburciu/Desktop/ISOs/ ` <br/>
-``` <br/>
+```  
 The authenticity of host '192.168.100.10 (192.168.100.10)' can't be established. <br/>
 ECDSA key fingerprint is SHA256:xxgIU8G+wvTR3tebY1EvBpmwdHsoHTyNY2Hgxs+0ADo. <br/>
 Are you sure you want to continue connecting (yes/no)? yes <br/>
@@ -216,11 +216,11 @@ Warning: Permanently added '192.168.100.10' (ECDSA) to the list of known hosts. 
 boburciu@192.168.100.10's password: <br/>
 ubuntu-18.04-netboot-amd64-unattended.iso                                                 100%   58MB  83.0MB/s   00:00 <br/>
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ <br/>
-``` <br/>
+```  
  <br/>
-[boburciu@r220 ~]$ 
-[boburciu@r220 ~]$ ` ls -lth /home/boburciu/Desktop/ISOs/ `
-``` <br/>
+[boburciu@r220 ~]$  <br/>
+[boburciu@r220 ~]$ ` ls -lth /home/boburciu/Desktop/ISOs/ ` <br/>
+```  
 total 24G <br/>
 -rw-r--r--. 1 boburciu boburciu  58M Dec  3 19:17 ubuntu-18.04-netboot-amd64-unattended.iso <br/>
 -rw-rw-r--. 1 boburciu boburciu 1.7G Nov 21 14:37 lubuntu-20.04.1-desktop-amd64.iso <br/>
@@ -229,4 +229,4 @@ total 24G <br/>
 -rw-------. 1 qemu     qemu      21G Nov 14 21:14 RancherOSm2.qcow2 <br/>
 -rw-------. 1 root     root      21G Nov 14 21:13 RancherOSm1.qcow2 <br/>
 [boburciu@r220 ~]$ <br/>
-``` <br/>
+```  
