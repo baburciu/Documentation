@@ -114,13 +114,64 @@ sameersbn/bind      latest              55516ab380dc        6 months ago        
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
 
+ ### - The container which will create the ISO takes as argument the public SSH key for the current user (*/home/boburciu/.ssh/id_rsa.pub*) and copies it in the ISO's /root/.ssh/id_rsa.pub so that current user can start an SSH session with user root to the VM where the ISO is mounted. To ensure the CentOS host can SSH to the VM from ISO:
+ ###  - 1. we first delete the key pair from current VM w Docker 
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` ls -lth /home/boburciu/.ssh/ `
+```
+total 12K
+-rw-r--r-- 1 boburciu boburciu  666 Dec  3 18:13 known_hosts
+-rw------- 1 boburciu boburciu 3.2K Dec  3 17:00 id_rsa
+-rw-r--r-- 1 boburciu boburciu  755 Dec  3 17:00 id_rsa.pub
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
+```
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` cd /home/boburciu/.ssh/; sudo rm id_rsa id_rsa.pub `
+```
+[sudo] password for boburciu:
+boburciu@dns:~/.ssh$ ls -lth /home/boburciu/.ssh/
+total 4.0K
+-rw-r--r-- 1 boburciu boburciu 666 Dec  3 18:13 known_hosts
+boburciu@dns:~/.ssh$
+```
+ ###  - 2. then copy the SSH key pair from the CentOS host to the Ubuntu18.04 VM w Docker where we create this container.
+[boburciu@r220 KVM-notes-proj]$ ` cd /home/boburciu/.ssh/ `
+```
+[boburciu@r220 .ssh]$
+[boburciu@r220 .ssh]$ ls -lt
+total 16
+-rw-------. 1 boburciu boburciu 1449 Dec  3 21:47 known_hosts
+-rw-------. 1 boburciu boburciu 3247 Nov 17 22:49 id_rsa
+-rw-r--r--. 1 boburciu boburciu  760 Nov 17 22:49 id_rsa.pub
+-rw-r--r--. 1 boburciu boburciu  177 Nov 14 17:38 known_hosts.old
+[boburciu@r220 .ssh]$
+```
+[boburciu@r220 .ssh]$ ` scp -3 -r id_rsa id_rsa.pub boburciu@DNSserver.boburciu.privatecloud.com:/home/boburciu/.ssh/ `
+```
+boburciu@dnsserver.boburciu.privatecloud.com's password:
+id_rsa                                                                                    100% 3247     7.0MB/s   00:00
+id_rsa.pub                                                                                100%  760     2.4MB/s   00:00
+[boburciu@r220 .ssh]$
+[boburciu@r220 .ssh]$
+```
+
+```
+boburciu@dns:~/.ssh$ ls -lth /home/boburciu/.ssh/
+total 12K
+-rw------- 1 boburciu boburciu 3.2K Dec  3 19:48 id_rsa
+-rw-r--r-- 1 boburciu boburciu  760 Dec  3 19:48 id_rsa.pub
+-rw-r--r-- 1 boburciu boburciu  666 Dec  3 18:13 known_hosts
+boburciu@dns:~/.ssh$ 
+boburciu@dns:~/.ssh$ date
+Thu Dec  3 19:50:59 UTC 2020
+boburciu@dns:~/.ssh$
+```
+
  ### - Create the one-off container that will create the unattended-install iso
 ```  
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ pwd
 /home/boburciu/Linux_unattended-install_iso/linux-unattended-installation
 boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$
 ```
-boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \ <br/>
+boburciu@dns:~/Linux_unattended-install_iso/linux-unattended-installation$ ` sudo docker run \ 
  --rm \
  -t \
  -v "$HOME/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro" \
@@ -229,3 +280,4 @@ total 24G
 -rw-------. 1 root     root      21G Nov 14 21:13 RancherOSm1.qcow2
 [boburciu@r220 ~]$
 ```
+
