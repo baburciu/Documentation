@@ -145,3 +145,14 @@ dns=none <br/>
 [boburciu@r220 KVM-notes-proj]$ ` sudo systemctl restart NetworkManager.service ` <br/>
 [boburciu@r220 KVM-notes-proj]$ <br/>
 
+## III. How to configure public DNS resolving for the DNS server container on Ubuntu18.04:
+ 
+ ### -  Following [guide](https://datawookie.netlify.app/blog/2018/10/dns-on-ubuntu-18.04/)
+` sudo apt install resolvconf `  
+` sudo vi /etc/resolvconf/resolv.conf.d/head ` and add the following:
+```
+# Make edits to /etc/resolvconf/resolv.conf.d/head.
+nameserver 8.8.4.4
+nameserver 8.8.8.8
+```
+` sudo service resolvconf restart `
