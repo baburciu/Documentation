@@ -353,3 +353,75 @@ INFO[0253] [addons] no user addons defined
 INFO[0253] Finished building Kubernetes cluster successfully
 [boburciu@r220 K8s_cluster_RKE]$
 ``` 
+
+## 2. Manage RKE K8s cluster
+
+ ### - I. You need the _kubectl_ command line tool to manage the RKE cluster:
+ #### - Download the latest release, make the kubectl binary executable and move it in a dir to your path in to your PATH::
+` curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl" ` <br/>
+` chmod +x ./kubectl ` <br/>
+` sudo mv ./kubectl /usr/local/bin/kubectl ` <br/>
+` kubectl version --client ` <br/>
+``` 
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+> ^C
+[boburciu@r220 K8s_cluster_RKE]$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 41.0M  100 41.0M    0     0  26.1M      0  0:00:01  0:00:01 --:--:-- 26.1M
+[boburciu@r220 K8s_cluster_RKE]$ chmod +x ./kubectl
+[boburciu@r220 K8s_cluster_RKE]$ sudo mv ./kubectl /usr/local/bin/kubectl
+[sudo] password for boburciu:
+[boburciu@r220 K8s_cluster_RKE]$ kubectl version --client
+Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCommit:"d360454c9bcd1634cf4cc52d1867af5491dc9c5f", GitTreeState:"clean", BuildDate:"2020-11-11T13:17:17Z", GoVersion:"go1.15.2", Compiler:"gc", Platform:"linux/amd64"}
+[boburciu@r220 K8s_cluster_RKE]$
+``` 
+
+ ### - II. RKE K8s cluster install has created _kube_config_cluster.yml_ in the dir where cluster.yml was called, which can be use to connect the _kubectl_ utility with the cluster:
+```
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$ pwd
+/home/boburciu/K8s_cluster_RKE
+[boburciu@r220 K8s_cluster_RKE]$ ls -lt
+total 128
+-rw-r-----. 1 boburciu boburciu 114303 Dec  6 00:41 cluster.rkestate
+-rw-r-----. 1 boburciu boburciu   5376 Dec  6 00:38 kube_config_cluster.yml
+-rw-r-----. 1 boburciu boburciu   6005 Dec  5 23:31 cluster.yml
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$ cat kube_config_cluster.yml
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    api-version: v1
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN3akNDQWFxZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFTTVJBd0RnWURWUVFERXdkcmRXSmwKTFdOaE1CNFhEVEl3TVR:
+    UkVUc01TQUhXTTJFa3UKYjg4THcwNWVRaXBtemJjb0NCYkFxdnZkMkIwaWJJNFFyRVk5SEtZb2xaMjh6L1lPS2EyRThOY25tUnI0M25PSgpqTlhrMGdzd2prQ1BxQ3phOTRENnpJUUhNangzZTFYTWRxMUcyU3pYY1lIRDJkRHBvS2s9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: "https://rkem2:6443"
+  name: "local"
+contexts:
+- context:
+    cluster: "local"
+    user: "kube-admin-local"
+  name: "local"
+current-context: "local"
+users:
+- name: "kube-admin-local"
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM2VENDQWRHZ0F3SUJBZ0lJYWIrUkpyTUZCdzR3RFFZSktvWklodmNOQVFFTEJRQXdFakVRTUE0R0ExVUUKQXhNSGEzVmlaUzFqWVR:
+    09rK2E0UEUrTGNzYkRMdkN0ZDlTLzlhYm9jQ1JBNm1EMmc9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+[boburciu@r220 K8s_cluster_RKE]$
+```
+[boburciu@r220 K8s_cluster_RKE]$ ` export KUBECONFIG=./kube_config_cluster.yml `
+```
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$ kubectl get nodes
+NAME    STATUS   ROLES               AGE   VERSION
+rkem1   Ready    controlplane,etcd   36m   v1.19.4
+rkem2   Ready    controlplane,etcd   36m   v1.19.4
+rkew1   Ready    worker              36m   v1.19.4
+rkew2   Ready    worker              36m   v1.19.4
+rkew3   Ready    worker              36m   v1.19.4
+rkew4   Ready    worker              36m   v1.19.4
+[boburciu@r220 K8s_cluster_RKE]$
+```
