@@ -299,3 +299,56 @@ vnet0      network    default    virtio      52:54:00:69:8a:08
 
   #### - RKE Worker Node 4. 
 ` sudo virt-install --name=rkew4 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew4.qcow2,size=20 `
+
+ ### - Once created, the VM using unattended-install ISO can be reached by SSH with user root from both DNS VM w Docker (where ISO got created in container) and the CentOS host:
+boburciu@dns:~/.ssh$ ` ssh root@rkem1.boburciu.privatecloud.com `
+```
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Sat Dec  5 19:44:18 2020 from 192.168.122.64
+root@device:~# exit
+logout
+Connection to rkem1.boburciu.privatecloud.com closed.
+boburciu@dns:~/.ssh$ exit
+logout
+Connection to dnsserver.boburciu.privatecloud.com. closed.
+```
+[boburciu@r220 ~]$ ` ssh root@rkem1.boburciu.privatecloud.com `
+```
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Sat Dec  5 19:44:53 2020 from 192.168.122.64
+root@device:~# exit
+logout
+Connection to rkem1.boburciu.privatecloud.com closed.
+[boburciu@r220 ~]$ 
+```
+
+ ### - To get IP addresses of VMs you can check the DHCP lease for their network, named "default"
+[boburciu@r220 ~]$ ` sudo virsh net-dhcp-leases default `
+```
+[boburciu@r220 ~]$ sudo virsh net-dhcp-leases default
+ Expiry Time          MAC address        Protocol  IP address                Hostname        Client ID or DUID
+-------------------------------------------------------------------------------------------------------------------
+ 2020-12-05 23:57:36  52:54:00:13:81:2c  ipv4      192.168.122.55/24         device          ff:b5:5e:67:ff:00:02:00:00:ab:11:3e:d8:01:c2:19:95:0d:23
+ 2020-12-05 23:46:04  52:54:00:26:d7:d0  ipv4      192.168.122.144/24        device          ff:b5:5e:67:ff:00:02:00:00:ab:11:c4:eb:c3:6a:7e:71:c6:40
+ 2020-12-06 00:03:09  52:54:00:69:8a:08  ipv4      192.168.122.64/24         dns             ff:b5:5e:67:ff:00:02:00:00:ab:11:92:31:a8:4d:4e:48:4a:18
+ 2020-12-05 23:56:24  52:54:00:7f:1e:6e  ipv4      192.168.122.167/24        device          ff:b5:5e:67:ff:00:02:00:00:ab:11:41:e7:9f:08:eb:25:b8:85
+ 2020-12-05 23:58:06  52:54:00:88:54:6f  ipv4      192.168.122.142/24        device          ff:b5:5e:67:ff:00:02:00:00:ab:11:14:c1:26:2d:4f:8f:7e:52
+ 2020-12-05 23:45:22  52:54:00:a5:b4:62  ipv4      192.168.122.192/24        device          ff:b5:5e:67:ff:00:02:00:00:ab:11:eb:f5:52:06:23:5e:ea:9c
+ 2020-12-05 23:46:15  52:54:00:cb:fb:ab  ipv4      192.168.122.180/24        device          ff:b5:5e:67:ff:00:02:00:00:ab:11:a7:4c:4b:88:48:d2:2a:a6
+
+[boburciu@r220 ~]$
+```

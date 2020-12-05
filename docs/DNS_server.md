@@ -156,3 +156,35 @@ nameserver 8.8.4.4
 nameserver 8.8.8.8
 ```
 ` sudo service resolvconf restart `
+
+ ### -  To have the DNS clients resolve short names and not FQDN, either have the DHCP server for those clients be set for DHCP Option 119, defined in [RFC3397](https://tools.ietf.org/html/rfc3397) or manually configure a ` search ` domain in ` /etc/resolv.conf `:
+``` 
+[boburciu@r220 ~]$ cat /etc/resolv.conf | grep search
+search local boburciu
+[boburciu@r220 ~]$ sudo vi /etc/resolv.conf
+[sudo] password for boburciu:
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ sudo systemctl restart NetworkManager.service
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ cat /etc/resolv.conf | grep search
+search local boburciu boburciu.privatecloud.com
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ ping rkem1
+PING rkem1.boburciu.privatecloud.com (192.168.122.192) 56(84) bytes of data.
+64 bytes from 192.168.122.192 (192.168.122.192): icmp_seq=1 ttl=64 time=0.170 ms
+64 bytes from 192.168.122.192 (192.168.122.192): icmp_seq=2 ttl=64 time=0.096 ms
+^C
+--- rkem1.boburciu.privatecloud.com ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 999ms
+rtt min/avg/max/mdev = 0.096/0.133/0.170/0.037 ms
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ ping rkew1
+PING rkew1.boburciu.privatecloud.com (192.168.122.180) 56(84) bytes of data.
+64 bytes from 192.168.122.180 (192.168.122.180): icmp_seq=1 ttl=64 time=0.127 ms
+64 bytes from 192.168.122.180 (192.168.122.180): icmp_seq=2 ttl=64 time=0.139 ms
+^C
+--- rkew1.boburciu.privatecloud.com ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 999ms
+rtt min/avg/max/mdev = 0.127/0.133/0.139/0.006 ms
+[boburciu@r220 ~]$
+```

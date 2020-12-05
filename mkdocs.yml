@@ -1,7 +1,8 @@
 site_name: My Docs
 nav:
     - Home: index.md
-    - About: about.md
     - How to maintain this doc page: how_to_maintain_doc.md
     - How to create & use BIND DNS server: DNS_server.md    
+    - How to create & install KVM: KVM_usage.md
+    - How to install & use RKE: RKE.md            
 theme: readthedocs    
