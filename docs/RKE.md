@@ -364,8 +364,6 @@ INFO[0253] Finished building Kubernetes cluster successfully
 ` kubectl version --client ` <br/>
 ``` 
 [boburciu@r220 K8s_cluster_RKE]$
-[boburciu@r220 K8s_cluster_RKE]$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-> ^C
 [boburciu@r220 K8s_cluster_RKE]$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
@@ -376,6 +374,52 @@ INFO[0253] Finished building Kubernetes cluster successfully
 [boburciu@r220 K8s_cluster_RKE]$ kubectl version --client
 Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCommit:"d360454c9bcd1634cf4cc52d1867af5491dc9c5f", GitTreeState:"clean", BuildDate:"2020-11-11T13:17:17Z", GoVersion:"go1.15.2", Compiler:"gc", Platform:"linux/amd64"}
 [boburciu@r220 K8s_cluster_RKE]$
+``` 
+
+ #### - Or to have *kubectl* on the RKE master node 1, SSH to it and install
+[boburciu@r220 OpenStackHelm_prereq]$ ` ssh ubuntu@rkem1 `
+``` 
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Mon Dec  7 15:05:27 2020 from 192.168.122.1
+ubuntu@device:~$
+ubuntu@device:~$ pwd
+/home/ubuntu
+ubuntu@device:~$
+ubuntu@device:~$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+> ^C
+ubuntu@device:~$ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 41.0M  100 41.0M    0     0  26.8M      0  0:00:01  0:00:01 --:--:-- 26.8M
+ubuntu@device:~$ chmod +x ./kubectl
+ubuntu@device:~$ sudo mv ./kubectl /usr/local/bin/kubectl
+ubuntu@device:~$ kubectl version --client
+Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCommit:"d360454c9bcd1634cf4cc52d1867af5491dc9c5f", GitTreeState:"clean", BuildDate:"2020-11-11T13:17:17Z", GoVersion:"go1.15.2", Compiler:"gc", Platform:"linux/amd64"}
+ubuntu@device:~$
+``` 
+
+ #### - then create ~/.kube/ dir, the default location for KUBECONFIG
+``` 
+ubuntu@device:~$ mkdir ~/.kube
+ubuntu@device:~$ 
+ubuntu@device:~$
+ubuntu@device:~$ stat ~/.kube
+  File: /home/ubuntu/.kube
+  Size: 4096            Blocks: 8          IO Block: 4096   directory
+Device: fd00h/64768d    Inode: 663812      Links: 2
+Access: (0775/drwxrwxr-x)  Uid: ( 1000/  ubuntu)   Gid: ( 1000/  ubuntu)
+Access: 2020-12-07 20:49:45.614488346 +0000
+Modify: 2020-12-07 20:49:37.654408911 +0000
+Change: 2020-12-07 20:49:37.654408911 +0000
+ Birth: -
+ubuntu@device:~$
 ``` 
 
  ### - II. RKE K8s cluster install has created _kube_config_cluster.yml_ in the dir where cluster.yml was called, which can be use to connect the _kubectl_ utility with the cluster:
@@ -412,7 +456,7 @@ users:
     09rK2E0UEUrTGNzYkRMdkN0ZDlTLzlhYm9jQ1JBNm1EMmc9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-[boburciu@r220 K8s_cluster_RKE]$ ` export KUBECONFIG=./kube_config_cluster.yml `
+[boburciu@r220 K8s_cluster_RKE]$ ` export KUBECONFIG=/home/boburciu/K8s_cluster_RKE/kube_config_cluster.yml `
 ```
 [boburciu@r220 K8s_cluster_RKE]$
 [boburciu@r220 K8s_cluster_RKE]$ kubectl get nodes
@@ -424,4 +468,20 @@ rkew2   Ready    worker              36m   v1.19.4
 rkew3   Ready    worker              36m   v1.19.4
 rkew4   Ready    worker              36m   v1.19.4
 [boburciu@r220 K8s_cluster_RKE]$
+```
+
+ #### - Or to have *kubectl* on the RKE master node 1, transfer */home/boburciu/K8s_cluster_RKE/kube_config_cluster.yml* to **rkem1** as ~/.kube/config
+[boburciu@r220 K8s_cluster_RKE]$ ` scp -3 -r ./kube_config_cluster.yml ubuntu@rkem1:~/.kube/config `
+```
+kube_config_cluster.yml                                                                     100% 5376    11.5MB/s   00:00
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$
+
+ubuntu@device:~$ ls -lt ~/.kube
+total 8
+-rw-r----- 1 ubuntu ubuntu 5376 Dec  7 20:53 config
+ubuntu@device:~$
+ubuntu@device:~$ date
+Mon Dec  7 20:53:34 UTC 2020
+ubuntu@device:~$
 ```
