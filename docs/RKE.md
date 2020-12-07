@@ -406,8 +406,9 @@ ubuntu@device:~$
 ``` 
 
  #### - then create ~/.kube/ dir, the default location for KUBECONFIG
+
+ubuntu@device:~$ ` mkdir ~/.kube `
 ``` 
-ubuntu@device:~$ mkdir ~/.kube
 ubuntu@device:~$ 
 ubuntu@device:~$
 ubuntu@device:~$ stat ~/.kube
@@ -483,5 +484,17 @@ total 8
 ubuntu@device:~$
 ubuntu@device:~$ date
 Mon Dec  7 20:53:34 UTC 2020
+ubuntu@device:~$
+ubuntu@device:~$
+ubuntu@device:~$ kubectl version
+Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCommit:"d360454c9bcd1634cf4cc52d1867af5491dc9c5f", GitTreeState:"clean", BuildDate:"2020-11-11T13:17:17Z", GoVersion:"go1.15.2", Compiler:"gc", Platform:"linux/amd64"}
+ubuntu@device:~$ kubectl get nodes
+NAME    STATUS   ROLES               AGE   VERSION
+rkem1   Ready    controlplane,etcd   46h   v1.19.4
+rkem2   Ready    controlplane,etcd   46h   v1.19.4
+rkew1   Ready    worker              46h   v1.19.4
+rkew2   Ready    worker              46h   v1.19.4
+rkew3   Ready    worker              46h   v1.19.4
+rkew4   Ready    worker              46h   v1.19.4
 ubuntu@device:~$
 ```

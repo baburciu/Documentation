@@ -126,9 +126,9 @@ rkew4                      : ok=2    changed=1    unreachable=0    failed=0    s
  ### - OSH uses Helm v2 with Tiller to deploy OpenStack services as containers. There are two parts to Helm: the Helm client (*helm*) and the Helm server (*Tiller*).
 
  #### - 1. to install Helm client:
-` curl -LO https://git.io/get_helm.sh `   
-` chmod 700 get_helm.sh `
-` ./get_helm.sh `
+` curl -LO https://git.io/get_helm.sh `   <br/>
+` chmod 700 get_helm.sh `<br/>
+` ./get_helm.sh `<br/>
 
  #### - 2. the easiest way to install *Tiller* into the cluster is simply to run ` helm init `. This will validate that helm’s local environment is set up correctly (and set it up if necessary) and then it will connect to whatever cluster *kubectl* connects to by default (` kubectl config view `).
 ```  
@@ -208,121 +208,39 @@ NAME                                      READY   STATUS         RESTARTS   AGE 
 ```
 
  ### - Clone the OpenStack-Helm Repos
-[boburciu@r220 OpenStackHelm_prereq]$ ` sudo git clone https://opendev.org/openstack/ openstack-helm.git /opt/openstack-helm `
+ubuntu@device:~$ ` sudo git clone https://opendev.org/openstack/openstack-helm.git /opt/openstack-helm `
 ```
 Cloning into '/opt/openstack-helm'...
 remote: Enumerating objects: 34989, done.
 remote: Counting objects: 100% (34989/34989), done.
-remote: Compressing objects: 100% (11792/11792), done.
-remote: Total 34989 (delta 26581), reused 30308 (delta 22584)
-Receiving objects: 100% (34989/34989), 7.36 MiB | 3.91 MiB/s, done.
-Resolving deltas: 100% (26581/26581), done.
-[boburciu@r220 OpenStackHelm_prereq]$
-[boburciu@r220 OpenStackHelm_prereq]$
-[boburciu@r220 OpenStackHelm_prereq]$ sudo ls -lt /opt/openstack-helm
-total 80
-drwxr-xr-x. 2 root root    56 Dec  7 21:59 zuul.d
-drwxr-xr-x. 6 root root    85 Dec  7 21:59 tools
--rw-r--r--. 1 root root   848 Dec  7 21:59 tox.ini
--rw-r--r--. 1 root root   616 Dec  7 21:59 yamllint.conf
--rw-r--r--. 1 root root   583 Dec  7 21:59 yamllint-templates.conf
-drwxr-xr-x. 2 root root    46 Dec  7 21:59 tests
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 tempest
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 senlin
--rw-r--r--. 1 root root   389 Dec  7 21:59 setup.cfg
--rwxr-xr-x. 1 root root   716 Dec  7 21:59 setup.py
-drwxr-xr-x. 3 root root    18 Dec  7 21:59 releasenotes
-drwxr-xr-x. 3 root root    98 Dec  7 21:59 rally
-drwxr-xr-x. 4 root root   104 Dec  7 21:59 placement
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 panko
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 octavia
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 nova
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 neutron
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 mistral
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 magnum
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 keystone
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 ironic
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 horizon
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 heat
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 glance
-drwxr-xr-x. 3 root root    42 Dec  7 21:59 doc
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 designate
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 cinder
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 ceilometer
--rw-r--r--. 1 root root   138 Dec  7 21:59 bindep.txt
-drwxr-xr-x. 4 root root  4096 Dec  7 21:59 barbican
-drwxr-xr-x. 3 root root    81 Dec  7 21:59 aodh
--rw-r--r--. 1 root root   659 Dec  7 21:59 CONTRIBUTING.rst
--rw-r--r--. 1 root root 11357 Dec  7 21:59 LICENSE
--rw-r--r--. 1 root root  1570 Dec  7 21:59 Makefile
--rw-r--r--. 1 root root  2142 Dec  7 21:59 README.rst
-[boburciu@r220 OpenStackHelm_prereq]$ 
-[boburciu@r220 OpenStackHelm_prereq]$ sudo ls -lt /opt/openstack-helm/tools/deployment/multinode/
-total 112
--rwxr-xr-x. 1 root root 3054 Dec  7 21:59 900-tempest.sh
--rwxr-xr-x. 1 root root 1935 Dec  7 21:59 kube-node-subnet.sh
-lrwxrwxrwx. 1 root root   22 Dec  7 21:59 070-memcached.sh -> ../common/memcached.sh
--rwxr-xr-x. 1 root root 1259 Dec  7 21:59 080-keystone.sh
--rwxr-xr-x. 1 root root 1167 Dec  7 21:59 085-horizon.sh
--rwxr-xr-x. 1 root root 2409 Dec  7 21:59 090-ceph-radosgateway.sh
--rwxr-xr-x. 1 root root 1891 Dec  7 21:59 100-glance.sh
--rwxr-xr-x. 1 root root 1427 Dec  7 21:59 110-cinder.sh
--rwxr-xr-x. 1 root root  954 Dec  7 21:59 120-openvswitch.sh
--rwxr-xr-x. 1 root root  973 Dec  7 21:59 130-libvirt.sh
--rwxr-xr-x. 1 root root 5218 Dec  7 21:59 140-compute-kit.sh
--rwxr-xr-x. 1 root root 1341 Dec  7 21:59 150-heat.sh
--rwxr-xr-x. 1 root root 1214 Dec  7 21:59 160-barbican.sh
--rwxr-xr-x. 1 root root  967 Dec  7 21:59 170-senlin.sh
--rwxr-xr-x. 1 root root 1217 Dec  7 21:59 180-mistral.sh
--rwxr-xr-x. 1 root root  970 Dec  7 21:59 190-magnum.sh
--rwxr-xr-x. 1 root root 1180 Dec  7 21:59 200-congress.sh
--rwxr-xr-x. 1 root root  895 Dec  7 21:59 210-postgresql.sh
--rwxr-xr-x. 1 root root 1002 Dec  7 21:59 220-gnocchi.sh
--rwxr-xr-x. 1 root root  886 Dec  7 21:59 230-mongodb.sh
--rwxr-xr-x. 1 root root  951 Dec  7 21:59 240-panko.sh
--rwxr-xr-x. 1 root root 1050 Dec  7 21:59 250-aodh.sh
--rwxr-xr-x. 1 root root 1054 Dec  7 21:59 260-ceilometer.sh
-lrwxrwxrwx. 1 root root   25 Dec  7 21:59 010-setup-client.sh -> ../common/setup-client.sh
--rwxr-xr-x. 1 root root  674 Dec  7 21:59 020-ingress.sh
--rwxr-xr-x. 1 root root 2902 Dec  7 21:59 030-ceph.sh
--rwxr-xr-x. 1 root root 1507 Dec  7 21:59 040-ceph-ns-activate.sh
--rwxr-xr-x. 1 root root 1057 Dec  7 21:59 050-mariadb.sh
--rwxr-xr-x. 1 root root  978 Dec  7 21:59 060-rabbitmq.sh
-[boburciu@r220 OpenStackHelm_prereq]$
-[boburciu@r220 OpenStackHelm_prereq]$ cd /opt/openstack-helm
-[boburciu@r220 openstack-helm]$
-[boburciu@r220 openstack-helm]$
+remote: Compressing objects: 100% (11799/11799), done.
+remote: Total 34989 (delta 26576), reused 30294 (delta 22577)
+Receiving objects: 100% (34989/34989), 7.37 MiB | 5.61 MiB/s, done.
+Resolving deltas: 100% (26576/26576), done.
+ubuntu@device:~$
+ubuntu@device:~$
 ```
-
-[boburciu@r220 openstack-helm]$ ` sudo mkdir /opt/openstack-helm-infra `
-[sudo] password for boburciu:
-[boburciu@r220 openstack-helm]$
-[boburciu@r220 openstack-helm]$ ` sudo git clone https://opendev.org/openstack/openstack-helm-infra.git /opt/openstack-helm-infra `
+ubuntu@device:~$ ` sudo git clone https://opendev.org/openstack/openstack-helm-infra.git /opt/openstack-helm-infra `
 ```
 Cloning into '/opt/openstack-helm-infra'...
 remote: Enumerating objects: 24032, done.
 remote: Counting objects: 100% (24032/24032), done.
-remote: Compressing objects: 100% (10092/10092), done.
-remote: Total 24032 (delta 17238), reused 19357 (delta 13186)
-Receiving objects: 100% (24032/24032), 4.35 MiB | 1.02 MiB/s, done.
-Resolving deltas: 100% (17238/17238), done.
-[boburciu@r220 openstack-helm]$
-[boburciu@r220 openstack-helm]$ ls -lt /opt
-total 8
-drwxr-xr-x. 64 root root 4096 Dec  7 22:30 openstack-helm-infra
-drwxr-xr-x. 28 root root 4096 Dec  7 21:59 openstack-helm
-drwxr-xr-x.  2 root root    6 Oct 30  2018 rh
-[boburciu@r220 openstack-helm]$
+remote: Compressing objects: 100% (10069/10069), done.
+remote: Total 24032 (delta 17245), reused 19383 (delta 13209)
+Receiving objects: 100% (24032/24032), 4.38 MiB | 7.00 MiB/s, done.
+Resolving deltas: 100% (17245/17245), done.
+ubuntu@device:~$
+ubuntu@device:~$
 ```
 
  ### - Deployment
-[boburciu@r220 openstack-helm]$ ` sudo ./tools/deployment/multinode/010-setup-client.sh `
+ubuntu@device:~$ ` cd /opt/openstack-helm ` <br/> 
+ubuntu@device:/opt/openstack-helm$ ` ./tools/deployment/multinode/010-setup-client.sh `
 ```
 :
-Successfully installed Babel-2.6.0 PyYAML-3.13 appdirs-1.4.3 certifi-2018.11.29 cffi-1.12.2 chardet-3.0.4 cliff-2.14.1 cmd2-0.8.9 cryptography-2.8 debtcollector-1.21.0 decorator-4.3.2 dogpile.cache-0.7.1 idna-2.8 iso8601-0.1.12 jmespath-0.9.4 jsonpatch-1.23 jsonpointer-2.0 jsonschema-2.6.0 keystoneauth1-3.13.2 msgpack-0.6.1 munch-2.3.2 netaddr-0.7.19 netifaces-0.10.9 openstacksdk-0.27.1 os-service-types-1.6.0 osc-lib-1.12.1 oslo.config-6.8.2 oslo.i18n-3.23.1 oslo.serialization-2.28.2 oslo.utils-3.40.7 pbr-5.1.3 prettytable-0.7.2 pyOpenSSL-19.1.0 pycparser-2.19 pyparsing-2.3.1 pyperclip-1.7.0 python-cinderclient-4.2.2 python-glanceclient-2.16.0 python-heatclient-1.17.1 python-keystoneclient-3.19.1 python-novaclient-13.0.2 python-openstackclient-3.18.1 python-swiftclient-3.7.1 pytz-2018.9 requests-2.21.0 requestsexceptions-1.4.0 rfc3986-1.2.0 simplejson-3.16.0 six-1.15.0 stevedore-1.30.1 urllib3-1.24.1 warlock-1.3.0 wcwidth-0.1.7 wrapt-1.11.1
 + sudo -H mkdir -p /etc/openstack
 ++ id -un
-+ sudo -H chown -R root: /etc/openstack
++ sudo -H chown -R ubuntu: /etc/openstack
 + FEATURE_GATE=tls
 + [[ '' =~ (^|[[:space:]])tls($|[[:space:]]) ]]
 + tee /etc/openstack/clouds.yaml
@@ -338,5 +256,6 @@ Successfully installed Babel-2.6.0 PyYAML-3.13 appdirs-1.4.3 certifi-2018.11.29 
         user_domain_name: 'default'
         auth_url: 'http://keystone.openstack.svc.cluster.local/v3'
 + make helm-toolkit
-[boburciu@r220 openstack-helm]$
+ubuntu@device:/opt/openstack-helm$
+
 ```
