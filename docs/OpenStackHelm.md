@@ -1,8 +1,7 @@
 # Managing OpenStacK as Helm
  
-## 0. Setup OSH:
-
- ### - First satisfy prerequisites for OSH on the KVMs (K8s cluster):
+## Prepare OSH deployment:
+ ### - I. First satisfy prerequisites for OSH on the KVMs (K8s cluster):
 [boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` cd OpenStackHelm_prereq/ ` <br/>
 [boburciu@r220 OpenStackHelm_prereq]$  <br/>
@@ -123,7 +122,7 @@ rkew4                      : ok=2    changed=1    unreachable=0    failed=0    s
 [boburciu@r220 OpenStackHelm_prereq]$
 ```  
 
- ### - OSH uses Helm v2 with Tiller to deploy OpenStack services as containers. There are two parts to Helm: the Helm client (*helm*) and the Helm server (*Tiller*).
+ ### - II. Install helm. OSH uses Helm v2 with Tiller to deploy OpenStack services as containers. There are two parts to Helm: the Helm client (*helm*) and the Helm server (*Tiller*).
 
  #### - 1. to install Helm client:
 ` curl -LO https://git.io/get_helm.sh `   <br/>
@@ -207,7 +206,7 @@ tiller-deploy-69c484895f-wmvxn            1/1     Running        0          6m17
 NAME                                      READY   STATUS         RESTARTS   AGE     IP                NODE    NOMINATED NODE   READINESS GATES
 ```
 
- ### - Clone the OpenStack-Helm Repos
+ ### - III. Clone the OpenStack-Helm Repos
 ubuntu@device:~$ ` sudo git clone https://opendev.org/openstack/openstack-helm.git /opt/openstack-helm `
 ```
 Cloning into '/opt/openstack-helm'...
@@ -233,7 +232,63 @@ ubuntu@device:~$
 ubuntu@device:~$
 ```
 
- ### - Deployment
+ ## Deployment
+
+ ### - 0. Need to prepare KVM hosts in K8s cluster with proper labeling for pod selector.
+ #### In the case of Ceph,it is important to note that Ceph monitors and OSDs are each deployed as a DaemonSet. Be aware that labeling an even number of monitor nodes can result in trouble when trying to reach a quorum.
+  #### Nodes are labeled according to their Openstack roles:
+   #### **Ceph MON Nodes: ceph-mon**
+   #### **Ceph OSD Nodes: ceph-osd**
+   #### **Ceph MDS Nodes: ceph-mds**
+   #### **Ceph RGW Nodes: ceph-rgw**
+   #### **Control Plane: openstack-control-plane**
+   #### **Compute Nodes: openvswitch, openstack-compute-node**
+
+ubuntu@device:~$ ` kubectl label nodes rkem1 rkem2 openstack-control-plane=enabled `
+```
+node/rkem1 labeled
+node/rkem2 labeled
+ubuntu@device:~$
+```
+ubuntu@device:~$ ` kubectl label nodes rkew1 rkew2 rkew3 openstack-compute-node=enabled `
+```
+node/rkew1 labeled
+node/rkew2 labeled
+node/rkew3 labeled
+ubuntu@device:~$
+```
+ubuntu@device:~$ ` kubectl label nodes rkew1 rkew2 rkew3 openvswitch=enabled `
+```
+node/rkew1 labeled
+node/rkew2 labeled
+node/rkew3 labeled
+```
+ubuntu@device:~$ ` kubectl label nodes rkew1 rkew2 rkew3 linuxbridge=enabled `
+```
+node/rkew1 labeled
+node/rkew2 labeled
+node/rkew3 labeled
+```
+ubuntu@device:~$ ` kubectl label nodes rkem1 rkem2 rkew4 ceph-mon=enabled ceph-osd=enabled ceph-mds=enabled ceph-rgw=enabled ceph-mgr=enabled `
+```
+node/rkem1 labeled
+node/rkem2 labeled
+node/rkew4 labeled
+ubuntu@device:~$
+```
+ubuntu@device:~$ ` kubectl get nodes --show-labels `
+```
+NAME    STATUS   ROLES               AGE     VERSION   LABELS
+rkem1   Ready    controlplane,etcd   3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ceph-mds=enabled,ceph-mgr=enabled,ceph-mon=enabled,ceph-osd=enabled,ceph-rgw=enabled,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkem1,kubernetes.io/os=linux,node-role.kubernetes.io/controlplane=true,node-role.kubernetes.io/etcd=true,openstack-control-plane=enabled
+rkem2   Ready    controlplane,etcd   3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ceph-mds=enabled,ceph-mgr=enabled,ceph-mon=enabled,ceph-osd=enabled,ceph-rgw=enabled,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkem2,kubernetes.io/os=linux,node-role.kubernetes.io/controlplane=true,node-role.kubernetes.io/etcd=true,openstack-control-plane=enabled
+rkew1   Ready    worker              3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew1,kubernetes.io/os=linux,linuxbridge=enabled,node-role.kubernetes.io/worker=true,openstack-compute-node=enabled,openvswitch=enabled
+rkew2   Ready    worker              3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew2,kubernetes.io/os=linux,linuxbridge=enabled,node-role.kubernetes.io/worker=true,openstack-compute-node=enabled,openvswitch=enabled
+rkew3   Ready    worker              3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew3,kubernetes.io/os=linux,linuxbridge=enabled,node-role.kubernetes.io/worker=true,openstack-compute-node=enabled,openvswitch=enabled
+rkew4   Ready    worker              3d19h   v1.19.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ceph-mds=enabled,ceph-mgr=enabled,ceph-mon=enabled,ceph-osd=enabled,ceph-rgw=enabled,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew4,kubernetes.io/os=linux,node-role.kubernetes.io/worker=true
+ubuntu@device:~$
+```
+
+ ### - I. Per [OSH multi-node install docs](https://docs.openstack.org/openstack-helm/latest/install/multinode.html) 
 ubuntu@device:~$ ` cd /opt/openstack-helm ` <br/> 
 ubuntu@device:/opt/openstack-helm$ ` ./tools/deployment/multinode/010-setup-client.sh `
 ```
@@ -257,5 +312,138 @@ ubuntu@device:/opt/openstack-helm$ ` ./tools/deployment/multinode/010-setup-clie
         auth_url: 'http://keystone.openstack.svc.cluster.local/v3'
 + make helm-toolkit
 ubuntu@device:/opt/openstack-helm$
-
 ```
+
+ #### -  Doc is incomplete, running _/opt/openstack-helm/tools/deployment/multinode/010-setup-client.sh_ script will not assemble chart and you need to:
+ubuntu@device:~$ ` cd / ` <br/>
+ubuntu@device:/$ ` helm serve & `
+```
+[1] 6056
+ubuntu@device:/$ Regenerating index. This may take a moment.
+Now serving you on 127.0.0.1:8879
+```
+` helm repo add local http://localhost:8879/charts `
+```
+"local" has been added to your repositories
+ubuntu@device:/$
+```
+ubuntu@device:/$  ` cd /opt/openstack-helm-infra `
+ubuntu@device:/opt/openstack-helm-infra$ ` sudo make `
+```
+===== Processing [helm-toolkit] chart =====
+make[1]: Entering directory '/opt/openstack-helm-infra'
+if [ -f helm-toolkit/Makefile ]; then make -C helm-toolkit; fi
+if [ -f helm-toolkit/requirements.yaml ]; then helm dep up helm-toolkit; fi
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "local" chart repository
+...Successfully got an update from the "stable" chart repository
+Update Complete.
+Saving 0 charts
+Deleting outdated charts
+if [ -d helm-toolkit ]; then helm lint helm-toolkit; fi
+==> Linting helm-toolkit
+Lint OK
+
+1 chart(s) linted, no failures
+if [ -d helm-toolkit ]; then helm package helm-toolkit; fi
+Successfully packaged chart and saved it to: /opt/openstack-helm-infra/helm-toolkit-0.1.5.tgz
+make[1]: Leaving directory '/opt/openstack-helm-infra'
+
+===== Processing [helm-toolkit] chart =====
+===== Processing [gnocchi] chart =====
+===== Processing [elasticsearch] chart =====
+===== Processing [calico] chart =====
+===== Processing [fluentd] chart =====
+===== Processing [ceph-rgw] chart =====
+===== Processing [powerdns] chart =====
+===== Processing [prometheus-kube-state-metrics] chart =====
+===== Processing [nfs-provisioner] chart =====
+===== Processing [prometheus-process-exporter] chart =====
+===== Processing [flannel] chart =====
+===== Processing [mongodb] chart =====
+===== Processing [kibana] chart =====
+===== Processing [libvirt] chart =====
+===== Processing [podsecuritypolicy] chart =====
+===== Processing [ldap] chart =====
+===== Processing [fluentbit] chart =====
+===== Processing [ceph-osd] chart =====
+===== Processing [zookeeper] chart =====
+===== Processing [kafka] chart =====
+===== Processing [redis] chart =====
+===== Processing [grafana] chart =====
+===== Processing [nagios] chart =====
+===== Processing [rabbitmq] chart =====
+===== Processing [daemonjob-controller] chart =====
+===== Processing [prometheus-node-exporter] chart =====
+===== Processing [local-storage] chart =====
+===== Processing [kubernetes-keystone-webhook] chart =====
+===== Processing [openvswitch] chart =====
+===== Processing [elastic-apm-server] chart =====
+===== Processing [prometheus-openstack-exporter] chart =====
+===== Processing [ceph-mon] chart =====
+===== Processing [mariadb] chart =====
+===== Processing [ca-issuer] chart =====
+===== Processing [prometheus] chart =====
+===== Processing [namespace-config] chart =====
+===== Processing [kube-dns] chart =====
+===== Processing [prometheus-blackbox-exporter] chart =====
+===== Processing [prometheus-alertmanager] chart =====
+===== Processing [ceph-client] chart =====
+===== Processing [falco] chart =====
+===== Processing [elastic-filebeat] chart =====
+===== Processing [alerta] chart =====
+===== Processing [metacontroller] chart =====
+===== Processing [ceph-provisioners] chart =====
+===== Processing [ingress] chart =====
+===== Processing [memcached] chart =====
+===== Processing [etcd] chart =====
+===== Processing [tiller] chart =====
+===== Processing [lockdown] chart =====
+===== Processing [registry] chart =====
+===== Processing [kubernetes-node-problem-detector] chart =====
+===== Processing [postgresql] chart =====
+===== Processing [elastic-packetbeat] chart =====
+===== Processing [elastic-metricbeat] chart =====
+```
+
+ ### - II. Then _/opt/openstack-helm/./tools/deployment/component/common/ingress.sh_ can be run
+ ##### -  Obs, if it returns the below error:
+ubuntu@device:/opt/openstack-helm-infra$ ` cd /opt/openstack-helm `
+ubuntu@device:/opt/openstack-helm$ `` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
+```
+:
+:
++ helm upgrade --install ingress-kube-system ../openstack-helm-infra/ingress --namespace=kube-system --values=/tmp/ingress-kube-system.yaml
+UPGRADE FAILED
+Error: configmaps is forbidden: User "system:serviceaccount:kube-system:default" cannot list resource "configmaps" in API group "" in the namespace "kube-system"
+Error: UPGRADE FAILED: configmaps is forbidden: User "system:serviceaccount:kube-system:default" cannot list resource "configmaps" in API group "" in the namespace "kube-system"
+ubuntu@device:/opt/openstack-helm$ kubectl [--namespace kube-system] get serviceaccount
+Error: unknown command "[--namespace" for "kubectl"
+Run 'kubectl --help' for usage.
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$
+```
+ ##### -  You need to:
+ ubuntu@device:/opt/openstack-helm$ ` kubectl create serviceaccount --namespace kube-system tiller `
+```
+serviceaccount/tiller created
+ubuntu@device:/opt/openstack-helm$
+```
+ubuntu@device:/opt/openstack-helm$ ` kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller `
+```
+clusterrolebinding.rbac.authorization.k8s.io/tiller-cluster-rule created
+ubuntu@device:/opt/openstack-helm$
+```
+ubuntu@device:/opt/openstack-helm$ ` kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}' `
+```
+deployment.apps/tiller-deploy patched (no change)
+ubuntu@device:/opt/openstack-helm$
+```
+ubuntu@device:/opt/openstack-helm$ ` helm init --upgrade --service-account tiller `
+```
+$HELM_HOME has been configured at /home/ubuntu/.helm.
+
+Tiller (the Helm server-side component) has been updated to ghcr.io/helm/tiller:v2.17.0 .
+ubuntu@device:/opt/openstack-helm$
+```
+ ### - II. 

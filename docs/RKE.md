@@ -498,3 +498,46 @@ rkew3   Ready    worker              46h   v1.19.4
 rkew4   Ready    worker              46h   v1.19.4
 ubuntu@device:~$
 ```
+
+## 3. Adding and removing RKE K8s cluster nodes:
+
+ ### - First create the KVMs:
+  #### - RKE Worker Node 5. 
+` sudo virt-install --name=rkew5 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew5.qcow2,size=20 ` 
+
+  #### - RKE Worker Node 6. 
+` sudo virt-install --name=rkew6 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew6.qcow2,size=20 ` 
+
+ ### - Considering [official RKE guide](https://rancher.com/docs/rke/latest/en/managing-clusters/)
+ #### - update the original *cluster.yml* file with any additional nodes and specify their role in the Kubernetes cluster. 
+```
+ - address: rkew5
+  port: "22"
+  internal_address: 192.168.122.142
+  role:
+  - worker
+  hostname_override: rkew5
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  ssh_cert: ""
+  ssh_cert_path: ""
+  labels: {}
+  taints: []
+ - address: rkew6
+  port: "22"
+  internal_address: 192.168.122.142
+  role:
+  - worker
+  hostname_override: rkew6
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  ssh_cert: ""
+  ssh_cert_path: ""
+  labels: {}
+  taints: []
+```
+ #### - Run ` rke up --update-only` and this will ignore everything else in the *cluster.yml* except for any worker nodes
