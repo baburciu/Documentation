@@ -499,21 +499,67 @@ rkew4   Ready    worker              46h   v1.19.4
 ubuntu@device:~$
 ```
 
-## 3. Adding and removing RKE K8s cluster nodes:
+## 3. Adding RKE K8s cluster nodes:
 
- ### - First create the KVMs:
+ ### - I. First create the new KVMs to serve as K8s nodes:
   #### - RKE Worker Node 5. 
 ` sudo virt-install --name=rkew5 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew5.qcow2,size=20 ` 
 
   #### - RKE Worker Node 6. 
 ` sudo virt-install --name=rkew6 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew6.qcow2,size=20 ` 
 
- ### - Considering [official RKE guide](https://rancher.com/docs/rke/latest/en/managing-clusters/)
- #### - update the original *cluster.yml* file with any additional nodes and specify their role in the Kubernetes cluster. 
+ ### - II. Add the new KVM nodes under _/etc/ansible/hosts_ to run RKE prerequisites Ansible playbook
+[boburciu@r220 ~]$ ` head -22 /etc/ansible/hosts `
+```
+[VMs:children]
+rancheos
+ubuntu-rke
+
+[rancheros]
+192.168.122.155
+
+[ubuntu-rke:children]
+ubuntu-rke-masters
+ubuntu-rke-workers
+
+[ubuntu-rke-masters]
+rkem1  ansible_user=root
+rkem2  ansible_user=root
+
+[ubuntu-rke-workers]
+rkew1  ansible_user=root
+rkew2  ansible_user=root
+rkew3  ansible_user=root
+rkew4  ansible_user=root
+rkew5  ansible_user=root
+rkew6  ansible_user=root
+[boburciu@r220 ~]$
+```
+ ### - III. Run RKE prereq playbook for _rkew5_ & _rkew6_
+[boburciu@r220 ~]$ <br/>
+[boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
+[boburciu@r220 Rancher_K8s_prereq]$
+[boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_prereq_setup.yml -v `
+```
+PLAY RECAP *******************************************************************************************************************
+rkem1                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkem2                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew1                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew2                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew3                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew4                      : ok=26   changed=7    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew5                      : ok=27   changed=17   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew6                      : ok=27   changed=17   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+
+[boburciu@r220 Rancher_K8s_prereq]$
+```
+
+ ### - IV. Considering [official RKE guide](https://rancher.com/docs/rke/latest/en/managing-clusters/)
+ #### - update the original */home/boburciu/K8s_cluster_RKE/cluster.yml* file with any additional nodes and specify their role in the Kubernetes cluster. 
 ```
  - address: rkew5
   port: "22"
-  internal_address: 192.168.122.142
+  internal_address: 192.168.122.141
   role:
   - worker
   hostname_override: rkew5
@@ -527,7 +573,7 @@ ubuntu@device:~$
   taints: []
  - address: rkew6
   port: "22"
-  internal_address: 192.168.122.142
+  internal_address: 192.168.122.88
   role:
   - worker
   hostname_override: rkew6
@@ -540,4 +586,105 @@ ubuntu@device:~$
   labels: {}
   taints: []
 ```
- #### - Run ` rke up --update-only` and this will ignore everything else in the *cluster.yml* except for any worker nodes
+
+[boburciu@r220 ~]$ ` sudo vi /home/boburciu/K8s_cluster_RKE/cluster.yml `
+```
+[sudo] password for boburciu:
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ cat /home/boburciu/K8s_cluster_RKE/cluster.yml | grep service -B28
+- address: rkew5
+  port: "22"
+  internal_address: 192.168.122.141
+  role:
+  - worker
+  hostname_override: rkew5
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  ssh_cert: ""
+  ssh_cert_path: ""
+  labels: {}
+  taints: []
+- address: rkew6
+  port: "22"
+  internal_address: 192.168.122.88
+  role:
+  - worker
+  hostname_override: rkew6
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  ssh_cert: ""
+  ssh_cert_path: ""
+  labels: {}
+  taints: []
+services:
+```
+
+ #### - Run ` rke up --update-only ` and this will ignore everything else in the *cluster.yml* except for any worker nodes
+[boburciu@r220 ~]$ ` cd ~/K8s_cluster_RKE/ ` <br/>
+[boburciu@r220 K8s_cluster_RKE]$ <br/>
+[boburciu@r220 K8s_cluster_RKE]$ ` rke up --update-only `
+```
+INFO[0000] Running RKE version: v1.2.3
+INFO[0000] Initiating Kubernetes cluster
+:
+INFO[0173] Finished building Kubernetes cluster successfully
+[boburciu@r220 K8s_cluster_RKE]$
+
+
+ubuntu@device:~$ kubectl get nodes
+NAME    STATUS   ROLES               AGE     VERSION
+rkem1   Ready    controlplane,etcd   3d20h   v1.19.4
+rkem2   Ready    controlplane,etcd   3d20h   v1.19.4
+rkew1   Ready    worker              3d20h   v1.19.4
+rkew2   Ready    worker              3d20h   v1.19.4
+rkew3   Ready    worker              3d20h   v1.19.4
+rkew4   Ready    worker              3d20h   v1.19.4
+ubuntu@device:~$ kubectl get nodes
+NAME    STATUS   ROLES               AGE     VERSION
+rkem1   Ready    controlplane,etcd   3d20h   v1.19.4
+rkem2   Ready    controlplane,etcd   3d20h   v1.19.4
+rkew1   Ready    worker              3d20h   v1.19.4
+rkew2   Ready    worker              3d20h   v1.19.4
+rkew3   Ready    worker              3d20h   v1.19.4
+rkew4   Ready    worker              3d20h   v1.19.4
+rkew5   Ready    worker              11m     v1.19.4
+rkew6   Ready    worker              11m     v1.19.4
+ubuntu@device:~$
+ubuntu@device:~$ kubectl get pods --all-namespaces
+NAMESPACE       NAME                                      READY   STATUS         RESTARTS   AGE
+ingress-nginx   default-http-backend-65dd5949d9-csjv7     1/1     Running        2          2d4h
+ingress-nginx   default-http-backend-65dd5949d9-djs9t     0/1     NodeAffinity   0          3d20h
+ingress-nginx   nginx-ingress-controller-b9gcr            1/1     Running        3          3d20h
+ingress-nginx   nginx-ingress-controller-cdghc            1/1     Running        0          10m
+ingress-nginx   nginx-ingress-controller-lftcm            1/1     Running        0          10m
+ingress-nginx   nginx-ingress-controller-np27v            1/1     Running        3          3d20h
+ingress-nginx   nginx-ingress-controller-pf6hc            1/1     Running        3          3d20h
+ingress-nginx   nginx-ingress-controller-zkvgj            1/1     Running        3          3d20h
+kube-system     calico-kube-controllers-87d89ff98-df25p   1/1     Running        3          3d20h
+kube-system     calico-node-2b4f8                         1/1     Running        3          3d20h
+kube-system     calico-node-8dxsj                         1/1     Running        0          11m
+kube-system     calico-node-9zzm2                         1/1     Running        3          3d20h
+kube-system     calico-node-b8wh5                         1/1     Running        3          3d20h
+kube-system     calico-node-nw6tp                         1/1     Running        3          3d20h
+kube-system     calico-node-qxqlq                         1/1     Running        5          3d20h
+kube-system     calico-node-sth2x                         1/1     Running        0          11m
+kube-system     calico-node-zwvq6                         1/1     Running        3          3d20h
+kube-system     coredns-6f85d5fb88-fwdgr                  1/1     Running        3          3d20h
+kube-system     coredns-6f85d5fb88-t7nfs                  1/1     Running        3          3d20h
+kube-system     coredns-autoscaler-79599b9dc6-6phrb       1/1     Running        3          3d20h
+kube-system     ingress-error-pages-667b646495-6llsm      0/1     Pending        0          116m
+kube-system     ingress-error-pages-667b646495-fgbh7      0/1     Pending        0          116m
+kube-system     metrics-server-8449844bf-2zpxm            1/1     Running        2          2d4h
+kube-system     metrics-server-8449844bf-8smnh            0/1     NodeAffinity   0          3d20h
+kube-system     rke-coredns-addon-deploy-job-g4jff        0/1     Completed      0          3d20h
+kube-system     rke-ingress-controller-deploy-job-5h47x   0/1     Completed      0          3d20h
+kube-system     rke-metrics-addon-deploy-job-2zlml        0/1     Completed      0          3d20h
+kube-system     rke-network-plugin-deploy-job-vnh4w       0/1     Completed      0          3d20h
+kube-system     tiller-deploy-7b56c8dfb7-7jsjl            1/1     Running        1          117m
+ubuntu@device:~$
+
+```
