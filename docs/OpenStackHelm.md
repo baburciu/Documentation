@@ -315,7 +315,7 @@ ubuntu@device:/opt/openstack-helm$ ` ./tools/deployment/multinode/010-setup-clie
 ubuntu@device:/opt/openstack-helm$
 ```
 
- #### -  Doc is incomplete, running _/opt/openstack-helm/tools/deployment/multinode/010-setup-client.sh_ script will not assemble chart and you need to:
+ #### -  Doc is incomplete, running _/opt/openstack-helm/tools/deployment/multinode/010-setup-client.sh_ script will not assemble chart and you need to:  <br/>
 ubuntu@device:~$ ` cd / ` <br/>
 ubuntu@device:/$ ` helm serve & `
 ```
@@ -328,8 +328,8 @@ Now serving you on 127.0.0.1:8879
 "local" has been added to your repositories
 ubuntu@device:/$
 ```
-ubuntu@device:/$  ` cd /opt/openstack-helm-infra `
-ubuntu@device:/opt/openstack-helm-infra$ ` sudo make `
+ubuntu@device:/$  ` cd /opt/openstack-helm-infra `  <br/>
+ubuntu@device:/opt/openstack-helm-infra$ ` sudo make ` 
 ```
 ===== Processing [helm-toolkit] chart =====
 make[1]: Entering directory '/opt/openstack-helm-infra'
@@ -410,7 +410,7 @@ make[1]: Leaving directory '/opt/openstack-helm-infra'
  ### - II. Then _/opt/openstack-helm/./tools/deployment/component/common/ingress.sh_ can be run
  ##### -  Obs, if it returns the below error:
 ubuntu@device:/opt/openstack-helm-infra$ ` cd /opt/openstack-helm `
-ubuntu@device:/opt/openstack-helm$ `` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
+ubuntu@device:/opt/openstack-helm$ ` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
 ```
 :
 :
@@ -503,7 +503,7 @@ rkew6   Ready    worker   54m     v1.19.4
 ubuntu@device:/opt/openstack-helm$
 ```
 
- ##### -  Transfer the Ansible inventory file from _rkem1_ in order to run Ansible ad-hoc from CentOS host, since all K8s nodes are SSH reachable from this host:
+ ##### -  Transfer the Ansible inventory file and the script to be run on all targe nodes (CEPH-labeled) from _rkem1_ in order to run Ansible ad-hoc from CentOS host, since all K8s nodes are SSH reachable from this host:
 [boburciu@r220 K8s_cluster_RKE]$ ` cd ~/OpenStackHelm_prereq/ `
 ```
 [boburciu@r220 OpenStackHelm_prereq]$ ls -lt
@@ -564,10 +564,91 @@ all:
 [boburciu@r220 OpenStackHelm_prereq]$
 ```
 
- ##### -  Problem:
+ ##### -  Since a script needs to be run on all target KVMs (worker nodes), we transfer it and the run it with Ansible ad-hoc:
+
 ```
+ubuntu@device:~$
+ubuntu@device:~$ ls -lt
+total 20
+-r--r----- 1 root root 17251 Dec  9 19:08 rancher_docker_install.sh
+ubuntu@device:~$
+ubuntu@device:~$
+```
+[boburciu@r220 ~]$ ` cd /home/boburciu/OpenStackHelm_prereq ` <br/>
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible all -i ./multinode-inventory_modifiedBurciu.yaml -m ansible.builtin.copy -a "src=./setup-ceph-loopback-device.sh dest=~/setup-ceph-loopback-device.sh mode=600 owner=ubuntu group=ubuntu" `
+```
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew6 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew6 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "a71b98a281ccea721435fdd1a2bc857d5caf6f79",
+    "dest": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "gid": 1000,
+    "group": "ubuntu",
+    "mode": "0770",
+    "owner": "ubuntu",
+    "path": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "size": 1727,
+    "state": "file",
+    "uid": 1000
+}
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew5 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew5 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "a71b98a281ccea721435fdd1a2bc857d5caf6f79",
+    "dest": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "gid": 1000,
+    "group": "ubuntu",
+    "mode": "0770",
+    "owner": "ubuntu",
+    "path": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "size": 1727,
+    "state": "file",
+    "uid": 1000
+}
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew4 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew4 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "a71b98a281ccea721435fdd1a2bc857d5caf6f79",
+    "dest": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "gid": 1000,
+    "group": "ubuntu",
+    "mode": "0770",
+    "owner": "ubuntu",
+    "path": "/home/ubuntu/setup-ceph-loopback-device.sh",
+    "size": 1727,
+    "state": "file",
+    "uid": 1000
+}
 [boburciu@r220 OpenStackHelm_prereq]$
-[boburciu@r220 OpenStackHelm_prereq]$ ansible all -i ./multinode-inventory_modifiedBurciu.yaml -m shell -a "/opt/openstack-helm/tools/deployment/common/setup-ceph-loopback-device.sh --ceph-osd-data /dev/loop0 --ceph-osd-dbwal /dev/loop1" -vv
+
+ubuntu@device:~$
+ubuntu@device:~$ ls -lt
+total 24
+-rwxrwx--- 1 ubuntu ubuntu  1727 Dec 11 19:54 setup-ceph-loopback-device.sh
+-r--r----- 1 root   root   17251 Dec  9 19:08 rancher_docker_install.sh
+ubuntu@device:~$
+ubuntu@device:~$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible all -i ./multinode-inventory_modifiedBurciu.yaml -m shell -a '~/setup-ceph-loopback-device.sh --ceph-osd-data /dev/loop0 --ceph-osd-dbwal /dev/loop1' -vv `
+```
 ansible 2.9.15
   config file = /etc/ansible/ansible.cfg
   configured module search path = [u'/home/boburciu/.ansible/plugins/modules', u'/usr/share/ansible/plugins/modules']
@@ -576,74 +657,322 @@ ansible 2.9.15
   python version = 2.7.5 (default, Oct 14 2020, 14:45:30) [GCC 4.8.5 20150623 (Red Hat 4.8.5-44)]
 Using /etc/ansible/ansible.cfg as config file
 META: ran handlers
-[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew5 should use /usr/bin/python3, but is using /usr/bin/python for
-backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
-python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
-information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
-deprecation_warnings=False in ansible.cfg.
-rkew5 | FAILED | rc=127 >>
-/bin/sh: 1: /opt/openstack-helm/tools/deployment/common/setup-ceph-loopback-device.sh: not foundnon-zero return code
-[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew6 should use /usr/bin/python3, but is using /usr/bin/python for
-backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
-python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
-information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
-deprecation_warnings=False in ansible.cfg.
-rkew6 | FAILED | rc=127 >>
-/bin/sh: 1: /opt/openstack-helm/tools/deployment/common/setup-ceph-loopback-device.sh: not foundnon-zero return code
-[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew4 should use /usr/bin/python3, but is using /usr/bin/python for
-backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
-python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
-information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
-deprecation_warnings=False in ansible.cfg.
-rkew4 | FAILED | rc=127 >>
-/bin/sh: 1: /opt/openstack-helm/tools/deployment/common/setup-ceph-loopback-device.sh: not foundnon-zero return code
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew4 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew4 | CHANGED | rc=0 >>
+/dev/loop1: [64768]:538475 (/var/lib/openstack-helm/ceph/ceph-osd-db-wal-loopbackfile.img)
+/dev/loop0: [64768]:538474 (/var/lib/openstack-helm/ceph/ceph-osd-data-loopbackfile.img)
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew6 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew6 | CHANGED | rc=0 >>
+/dev/loop1: [64768]:541195 (/var/lib/openstack-helm/ceph/ceph-osd-db-wal-loopbackfile.img)
+/dev/loop0: [64768]:541194 (/var/lib/openstack-helm/ceph/ceph-osd-data-loopbackfile.img)
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew5 should use /usr/bin/python3, but is using /usr/bin/python for backward
+compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform python for this host.
+See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more information. This feature will be
+removed in version 2.12. Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.
+rkew5 | CHANGED | rc=0 >>
+/dev/loop1: [64768]:278361 (/var/lib/openstack-helm/ceph/ceph-osd-db-wal-loopbackfile.img)
+/dev/loop0: [64768]:278360 (/var/lib/openstack-helm/ceph/ceph-osd-data-loopbackfile.img)
+META: ran handlers
+META: ran handlers
 [boburciu@r220 OpenStackHelm_prereq]$
-[boburciu@r220 OpenStackHelm_prereq]$ cat ./setup-ceph-loopback-device.sh                                                     #!/bin/bash
-function setup_loopback_devices() {
-  osd_data_device="$1"
-  osd_wal_db_device="$2"
-  namespace=${CEPH_NAMESPACE}
-  sudo mkdir -p /var/lib/openstack-helm/$namespace
-  sudo truncate -s 10G /var/lib/openstack-helm/$namespace/ceph-osd-data-loopbackfile.img
-  sudo truncate -s 8G /var/lib/openstack-helm/$namespace/ceph-osd-db-wal-loopbackfile.img
-  sudo losetup $osd_data_device /var/lib/openstack-helm/$namespace/ceph-osd-data-loopbackfile.img
-  sudo losetup $osd_wal_db_device /var/lib/openstack-helm/$namespace/ceph-osd-db-wal-loopbackfile.img
-  #lets verify the devices
-  sudo losetup -a
-}
+```
 
-while [[ "$#" > 0 ]]; do case $1 in
-  -d|--ceph-osd-data) OSD_DATA_DEVICE="$2"; shift;shift;;
-  -w|--ceph-osd-dbwal) OSD_DB_WAL_DEVICE="$2";shift;shift;;
-  -v|--verbose) VERBOSE=1;shift;;
-  *) echo "Unknown parameter passed: $1"; shift;;
-esac; done
+ ### - IV. Deploy Ceph
+ ##### - Run the script
 
-# verify params
-if [ -z "$OSD_DATA_DEVICE" ]; then
-  OSD_DATA_DEVICE=/dev/loop0
-  echo "Ceph osd data device is not set so using ${OSD_DATA_DEVICE}"
-else
-  ceph_osd_disk_name=`basename "$OSD_DATA_DEVICE"`
-  if losetup -a|grep $ceph_osd_disk_name; then
-     echo "Ceph osd data device is already in use, please double check and correct the device name"
-     exit 1
-  fi
-fi
+ubuntu@device:~$ ` cd /opt/openstack-helm `
+ubuntu@device:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/030-ceph.sh `
+```
++ '[' -s /tmp/ceph-fs-uuid.txt ']'
++ uuidgen
+++ ./tools/deployment/multinode/kube-node-subnet.sh
+Flag --generator has been deprecated, has no effect and will be removed in the future.
+Flag --generator has been deprecated, has no effect and will be removed in the future.
++ CEPH_PUBLIC_NETWORK=192.168.122.0/24
++ CEPH_CLUSTER_NETWORK=192.168.122.0/24
+++ cat /tmp/ceph-fs-uuid.txt
+:
+:
 
-if [ -z "$OSD_DB_WAL_DEVICE" ]; then
-  OSD_DB_WAL_DEVICE=/dev/loop1
-  echo "Ceph osd db/wal device is not set so using ${OSD_DB_WAL_DEVICE}"
-else
-  ceph_dbwal_disk_name=`basename "$OSD_DB_WAL_DEVICE"`
-  if losetup -a|grep $ceph_dbwal_disk_name; then
-     echo "Ceph osd dbwal device is already in use, please double check and correct the device name"
-     exit 1
-  fi
-fi
++ ./tools/deployment/common/wait-for-pods.sh ceph 1200
+Containers failed to start after 1200 seconds
 
-: "${CEPH_NAMESPACE:="ceph"}"
-# setup loopback devices for ceph osds
-setup_loopback_devices $OSD_DATA_DEVICE $OSD_DB_WAL_DEVICE
-[boburciu@r220 OpenStackHelm_prereq]$
+NAME                                   READY   STATUS      RESTARTS   AGE   IP                NODE    NOMINATED NODE   READINESS GATES
+ceph-bootstrap-x88wx                   0/1     Completed   0          26m   10.42.176.7       rkew5   <none>           <none>
+ceph-checkdns-758fd57744-bbf8k         1/1     Running     0          20m   192.168.122.88    rkew6   <none>           <none>
+ceph-mds-59d4564c65-bndvd              0/1     Init:0/2    0          20m   10.42.176.9       rkew5   <none>           <none>
+ceph-mds-59d4564c65-hlfmb              0/1     Init:0/2    0          20m   10.42.212.138     rkew6   <none>           <none>
+ceph-mds-keyring-generator-9wpzt       0/1     Completed   0          26m   10.42.212.134     rkew6   <none>           <none>
+ceph-mgr-857b56f6dc-g9mw6              1/1     Running     0          20m   192.168.122.88    rkew6   <none>           <none>
+ceph-mgr-857b56f6dc-lh82p              1/1     Running     0          20m   192.168.122.141   rkew5   <none>           <none>
+ceph-mgr-keyring-generator-mpzl5       0/1     Completed   0          26m   10.42.212.135     rkew6   <none>           <none>
+ceph-mon-49jfp                         1/1     Running     0          26m   192.168.122.88    rkew6   <none>           <none>
+ceph-mon-5mkrl                         1/1     Running     0          26m   192.168.122.142   rkew4   <none>           <none>
+ceph-mon-check-fc8b6f6cf-ztp5q         1/1     Running     0          26m   10.42.176.8       rkew5   <none>           <none>
+ceph-mon-keyring-generator-l9zc6       0/1     Completed   0          26m   10.42.212.137     rkew6   <none>           <none>
+ceph-mon-pwphw                         1/1     Running     0          26m   192.168.122.141   rkew5   <none>           <none>
+ceph-osd-default-83945928-4tl62        2/2     Running     0          22m   192.168.122.141   rkew5   <none>           <none>
+ceph-osd-default-83945928-jv5m2        2/2     Running     0          22m   192.168.122.88    rkew6   <none>           <none>
+ceph-osd-default-83945928-qhbxh        2/2     Running     0          22m   192.168.122.142   rkew4   <none>           <none>
+ceph-osd-keyring-generator-r9pw8       0/1     Completed   0          26m   10.42.212.136     rkew6   <none>           <none>
+ceph-pool-checkpgs-1607717700-6rslp    0/1     Init:0/1    0          18m   192.168.122.141   rkew5   <none>           <none>
+ceph-rbd-pool-xd65f                    1/1     Running     3          20m   10.42.212.139     rkew6   <none>           <none>
+ceph-storage-keys-generator-rlq49      0/1     Completed   0          26m   10.42.176.6       rkew5   <none>           <none>
+ingress-8c574f9b4-gnl5s                1/1     Running     0          97m   10.42.44.83       rkew4   <none>           <none>
+ingress-8c574f9b4-jq4k6                1/1     Running     1          2d    10.42.44.78       rkew4   <none>           <none>
+ingress-error-pages-6fb6d67c57-r8w9w   1/1     Running     1          2d    10.42.44.79       rkew4   <none>           <none>
+ingress-error-pages-6fb6d67c57-rj58x   1/1     Running     0          96m   10.42.44.87       rkew4   <none>           <none>
+
+Some pods are in pending state:
+NAME                                  READY   STATUS     RESTARTS   AGE   IP                NODE    NOMINATED NODE   READINESS GATES
+ceph-mds-59d4564c65-bndvd             0/1     Init:0/2   0          20m   10.42.176.9       rkew5   <none>           <none>
+ceph-mds-59d4564c65-hlfmb             0/1     Init:0/2   0          20m   10.42.212.138     rkew6   <none>           <none>
+ceph-pool-checkpgs-1607717700-6rslp   0/1     Init:0/1   0          18m   192.168.122.141   rkew5   <none>           <none>
+Some jobs have not succeeded
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$
+```
+
+ ### - V. Deploy Ceph
+ ##### - Run the script
+
+ubuntu@device:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/040-ceph-ns-activate.sh `
+```
+++ ./tools/deployment/multinode/kube-node-subnet.sh
+Flag --generator has been deprecated, has no effect and will be removed in the future.
+Flag --generator has been deprecated, has no effect and will be removed in the future.
++ CEPH_PUBLIC_NETWORK=192.168.122.0/24
++ CEPH_CLUSTER_NETWORK=192.168.122.0/24
++ tee /tmp/ceph-openstack-config.yaml
+endpoints:
+  ceph_mon:
+    namespace: ceph
+network:
+  public: 192.168.122.0/24
+  cluster: 192.168.122.0/24
+deployment:
+  ceph: false
+  rbd_provisioner: false
+  cephfs_provisioner: false
+  client_secrets: true
+bootstrap:
+  enabled: false
+storageclass:
+  cephfs:
+    provision_storage_class: false
++ : ../openstack-helm-infra
++ helm upgrade --install ceph-openstack-config ../openstack-helm-infra/ceph-provisioners --namespace=openstack --values=/tmp/ceph-openstack-config.yaml
+Release "ceph-openstack-config" does not exist. Installing it now.
+NAME:   ceph-openstack-config
+LAST DEPLOYED: Fri Dec 11 21:15:47 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ClusterRole
+NAME                        CREATED AT
+ceph-openstack-config-test  2020-12-11T21:15:48Z
+
+==> v1/ClusterRoleBinding
+NAME                        ROLE                                    AGE
+ceph-openstack-config-test  ClusterRole/ceph-openstack-config-test  0s
+
+==> v1/ConfigMap
+NAME                                         DATA  AGE
+ceph-etc                                     1     0s
+ceph-openstack-config-ceph-prov-bin-clients  3     0s
+
+==> v1/Job
+NAME                                         COMPLETIONS  DURATION  AGE
+ceph-openstack-config-ceph-ns-key-generator  0/1          0s        0s
+
+==> v1/Pod(related)
+NAME                                               READY  STATUS    RESTARTS  AGE
+ceph-openstack-config-ceph-ns-key-generator-q72fm  0/1    Init:0/1  0         0s
+
+==> v1/Role
+NAME                                               CREATED AT
+ceph-openstack-config-ceph-ns-key-cleaner          2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator        2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  2020-12-11T21:15:48Z
+
+==> v1/RoleBinding
+NAME                                               ROLE                                                    AGE
+ceph-openstack-config-ceph-ns-key-cleaner          Role/ceph-openstack-config-ceph-ns-key-cleaner          0s
+ceph-openstack-config-ceph-ns-key-generator        Role/ceph-openstack-config-ceph-ns-key-generator        0s
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  Role/ceph-openstack-config-ceph-ns-key-generator-0h7zc  0s
+
+==> v1/ServiceAccount
+NAME                                         SECRETS  AGE
+ceph-openstack-config-ceph-ns-key-cleaner    1        0s
+ceph-openstack-config-ceph-ns-key-generator  1        0s
+ceph-openstack-config-test                   1        0s
+
+
++ ./tools/deployment/common/wait-for-pods.sh openstack
++ helm status ceph-openstack-config
+LAST DEPLOYED: Fri Dec 11 21:15:47 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ClusterRole
+NAME                        CREATED AT
+ceph-openstack-config-test  2020-12-11T21:15:48Z
+
+==> v1/ClusterRoleBinding
+NAME                        ROLE                                    AGE
+ceph-openstack-config-test  ClusterRole/ceph-openstack-config-test  6s
+
+==> v1/ConfigMap
+NAME                                         DATA  AGE
+ceph-etc                                     1     6s
+ceph-openstack-config-ceph-prov-bin-clients  3     6s
+
+==> v1/Job
+NAME                                         COMPLETIONS  DURATION  AGE
+ceph-openstack-config-ceph-ns-key-generator  1/1          3s        6s
+
+==> v1/Pod(related)
+NAME                                               READY  STATUS     RESTARTS  AGE
+ceph-openstack-config-ceph-ns-key-generator-q72fm  0/1    Completed  0         6s
+
+==> v1/Role
+NAME                                               CREATED AT
+ceph-openstack-config-ceph-ns-key-cleaner          2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator        2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  2020-12-11T21:15:48Z
+
+==> v1/RoleBinding
+NAME                                               ROLE                                                    AGE
+ceph-openstack-config-ceph-ns-key-cleaner          Role/ceph-openstack-config-ceph-ns-key-cleaner          6s
+ceph-openstack-config-ceph-ns-key-generator        Role/ceph-openstack-config-ceph-ns-key-generator        6s
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  Role/ceph-openstack-config-ceph-ns-key-generator-0h7zc  6s
+
+==> v1/ServiceAccount
+NAME                                         SECRETS  AGE
+ceph-openstack-config-ceph-ns-key-cleaner    1        6s
+ceph-openstack-config-ceph-ns-key-generator  1        6s
+ceph-openstack-config-test                   1        6s
+
+
+ubuntu@device:/opt/openstack-helm$
+```
+
+ ### - V. Deploy MariaDB
+ ##### - Run the script
+
+ubuntu@device:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/050-mariadb.sh `
+```
++ tee /tmp/mariadb.yaml
+pod:
+  replicas:
+    server: 3
+    ingress: 3
++ : ../openstack-helm-infra
++ helm upgrade --install mariadb ../openstack-helm-infra/mariadb --namespace=openstack --values=/tmp/mariadb.yaml
+Release "mariadb" does not exist. Installing it now.
+NAME:   mariadb
+LAST DEPLOYED: Fri Dec 11 21:17:55 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ConfigMap
+NAME                  DATA  AGE
+mariadb-bin           5     1s
+mariadb-etc           3     1s
+mariadb-ingress-conf  1     1s
+mariadb-ingress-etc   1     1s
+mariadb-services-tcp  1     1s
+
+==> v1/Deployment
+NAME                         READY  UP-TO-DATE  AVAILABLE  AGE
+mariadb-ingress              0/3    3           0          1s
+mariadb-ingress-error-pages  0/1    1           0          1s
+
+==> v1/Pod(related)
+NAME                                         READY  STATUS    RESTARTS  AGE
+mariadb-ingress-7d8c66db8f-4v2cd             0/1    Init:0/1  0         1s
+mariadb-ingress-7d8c66db8f-k8ljv             0/1    Init:0/1  0         1s
+mariadb-ingress-7d8c66db8f-zs5bd             0/1    Init:0/1  0         1s
+mariadb-ingress-error-pages-856566b76-hfwzn  0/1    Init:0/1  0         1s
+mariadb-server-0                             0/1    Pending   0         2s
+mariadb-server-1                             0/1    Pending   0         2s
+mariadb-server-2                             0/1    Pending   0         1s
+
+==> v1/Role
+NAME                               CREATED AT
+mariadb-ingress                    2020-12-11T21:17:56Z
+mariadb-mariadb                    2020-12-11T21:17:56Z
+mariadb-openstack-mariadb-ingress  2020-12-11T21:17:56Z
+mariadb-openstack-mariadb-test     2020-12-11T21:17:56Z
+
+==> v1/RoleBinding
+NAME                     ROLE                                    AGE
+mariadb-ingress          Role/mariadb-ingress                    1s
+mariadb-mariadb          Role/mariadb-mariadb                    1s
+mariadb-mariadb-ingress  Role/mariadb-openstack-mariadb-ingress  1s
+mariadb-mariadb-test     Role/mariadb-openstack-mariadb-test     1s
+
+==> v1/Secret
+NAME                      TYPE    DATA  AGE
+mariadb-dbadmin-password  Opaque  1     1s
+mariadb-dbaudit-password  Opaque  1     1s
+mariadb-dbsst-password    Opaque  1     1s
+mariadb-secrets           Opaque  2     1s
+
+==> v1/Service
+NAME                         TYPE       CLUSTER-IP    EXTERNAL-IP  PORT(S)            AGE
+mariadb                      ClusterIP  10.43.92.165  <none>       3306/TCP           1s
+mariadb-discovery            ClusterIP  None          <none>       3306/TCP,4567/TCP  1s
+mariadb-ingress-error-pages  ClusterIP  None          <none>       80/TCP             1s
+mariadb-server               ClusterIP  10.43.208.9   <none>       3306/TCP           1s
+
+==> v1/ServiceAccount
+NAME                         SECRETS  AGE
+mariadb-ingress              1        1s
+mariadb-ingress-error-pages  1        1s
+mariadb-mariadb              1        1s
+mariadb-test                 1        1s
+
+==> v1/StatefulSet
+NAME            READY  AGE
+mariadb-server  0/3    1s
+
+==> v1beta1/PodDisruptionBudget
+NAME            MIN AVAILABLE  MAX UNAVAILABLE  ALLOWED DISRUPTIONS  AGE
+mariadb-server  0              N/A              0                    1s
+
+
++ ./tools/deployment/common/wait-for-pods.sh openstack
+Containers failed to start after 900 seconds
+
+NAME                                                READY   STATUS      RESTARTS   AGE    IP              NODE     NOMINATED NODE   READINESS GATES
+ceph-openstack-config-ceph-ns-key-generator-q72fm   0/1     Completed   0          17m    10.42.212.140   rkew6    <none>           <none>
+ingress-6cbc96b8fd-5n6bn                            1/1     Running     0          156m   10.42.44.82     rkew4    <none>           <none>
+ingress-6cbc96b8fd-lwtkl                            1/1     Running     0          156m   10.42.44.85     rkew4    <none>           <none>
+ingress-error-pages-97b98747c-gfjx2                 1/1     Running     0          156m   10.42.44.81     rkew4    <none>           <none>
+ingress-error-pages-97b98747c-wq9tf                 1/1     Running     0          156m   10.42.44.86     rkew4    <none>           <none>
+mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running     0          15m    10.42.176.12    rkew5    <none>           <none>
+mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running     0          15m    10.42.212.141   rkew6    <none>           <none>
+mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running     0          15m    10.42.44.90     rkew4    <none>           <none>
+mariadb-ingress-error-pages-856566b76-hfwzn         1/1     Running     0          15m    10.42.176.11    rkew5    <none>           <none>
+mariadb-server-0                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+mariadb-server-1                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+mariadb-server-2                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+
+Some pods are in pending state:
+NAME               READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE   READINESS GATES
+mariadb-server-0   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+mariadb-server-1   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+mariadb-server-2   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+Some pods are not ready
+ubuntu@device:/opt/openstack-helm$
 ```
