@@ -409,7 +409,7 @@ make[1]: Leaving directory '/opt/openstack-helm-infra'
 
  ### - II. Then _/opt/openstack-helm/./tools/deployment/component/common/ingress.sh_ can be run
  ##### -  Obs, if it returns the below error:
-ubuntu@device:/opt/openstack-helm-infra$ ` cd /opt/openstack-helm `
+ubuntu@device:/opt/openstack-helm-infra$ ` cd /opt/openstack-helm ` <br/>
 ubuntu@device:/opt/openstack-helm$ ` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
 ```
 :
@@ -686,7 +686,7 @@ META: ran handlers
  ### - IV. Deploy Ceph
  ##### - Run the script
 
-ubuntu@device:~$ ` cd /opt/openstack-helm `
+ubuntu@device:~$ ` cd /opt/openstack-helm ` <br/>
 ubuntu@device:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/030-ceph.sh `
 ```
 + '[' -s /tmp/ceph-fs-uuid.txt ']'
@@ -974,5 +974,265 @@ mariadb-server-0   0/1     Pending   0          15m   <none>   <none>   <none>  
 mariadb-server-1   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
 mariadb-server-2   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
 Some pods are not ready
+ubuntu@device:/opt/openstack-helm$
+```
+
+ ### - T-Shoot tries
+ ##### - Verifying OpenStack pods state:
+```
+[boburciu@r220 ~]$ ssh ubuntu@rkem1
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+Last login: Fri Dec 11 21:16:08 2020 from 192.168.122.1
+ubuntu@device:~$
+ubuntu@device:~$
+```
+ubuntu@device:~$ ` kubectl get po --all-namespaces -o=wide | gawk 'match($3, /([0-9])+\/([0-9])+/, a) {if (a[1] < a [92] && $4 != "Completed") print $0}' ` 
+```
+ceph            ceph-checkdns-758fd57744-bbf8k                      0/1     NodeAffinity            0          5d17h
+ceph            ceph-mds-59d4564c65-8lh25                           0/1     Init:0/2                1          5d16h
+ceph            ceph-mds-59d4564c65-pkzg9                           0/1     Init:0/2                0          5d16h
+ceph            ceph-osd-default-83945928-4tl62                     0/2     Init:CrashLoopBackOff   6          5d17h
+ceph            ceph-osd-default-83945928-qhbxh                     0/2     Init:CrashLoopBackOff   6          5d17h
+ceph            ceph-osd-default-83945928-xlptk                     0/2     Init:CrashLoopBackOff   4          3m38s
+ceph            ceph-pool-checkpgs-1607717700-9tg9j                 0/1     Init:0/1                0          3m40s
+ceph            ceph-pool-checkpgs-1607717700-rgl8n                 0/1     Init:Error              0          5d16h
+ingress-nginx   default-http-backend-65dd5949d9-djs9t               0/1     NodeAffinity            0          11d
+kube-system     coredns-6f85d5fb88-t7nfs                            0/1     NodeAffinity            0          11d
+kube-system     ingress-cm57s                                       0/1     Pending                 0          7d17h
+kube-system     ingress-klsxx                                       0/1     Pending                 0          7d17h
+kube-system     ingress-ptqfz                                       0/1     Pending                 0          7d17h
+kube-system     metrics-server-8449844bf-8smnh                      0/1     NodeAffinity            0          11d
+openstack       mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running                 1          5d16h
+openstack       mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running                 1          5d16h
+openstack       mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running                 1          5d16h
+openstack       mariadb-server-0                                    0/1     Pending                 0          5d16h
+openstack       mariadb-server-1                                    0/1     Pending                 0          5d16h
+openstack       mariadb-server-2                                    0/1     Pending                 0          5d16h
+ubuntu@device:~$
+```
+
+ ##### - Job=_ceph-rbd-pool_ & pod=_ceph-rbd-pool-_ is dependent on Ceph OSD:
+``` 
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n ceph logs ceph-rbd-pool-thw56 -c ceph-rbd-pool
+:
+:
++ EXPECTED_OSDS=3
++ REQUIRED_PERCENT_OF_OSDS=75
++ '[' 0 -gt 3 ']'
++ MIN_OSDS=2
++ '[' 2 -lt 1 ']'
++ '[' '' ']'
++ '[' 3 -eq 0 ']'
++ '[' 3 -ge 2 ']'
++ '[' 0 -ge 2 ']'
+Required number of OSDs (2) are NOT UP and IN status. Cluster shows OSD count=3, UP=0, IN=3
++ echo 'Required number of OSDs (2) are NOT UP and IN status. Cluster shows OSD count=3, UP=0, IN=3'
++ exit 1
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n ceph get jobs | grep ceph-rbd-pool
+ceph-rbd-pool                   0/1           9m23s      9m23s
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n ceph get pods | grep osd
+ceph-osd-default-83945928-4j9lw        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-default-83945928-fvshr        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-default-83945928-mbhkr        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-keyring-generator-r9pw8       0/1     Completed               0          5d20h
+ubuntu@device:/opt/openstack-helm$
+```
+
+ ##### - Pods=_mariadb-server-_ pending for "_storageclass.storage.k8s.io "general" not found_"
+```
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n openstack get pods|  grep mariadb-server-
+mariadb-server-0                                    0/1     Pending     0          5d20h
+mariadb-server-1                                    0/1     Pending     0          5d20h
+mariadb-server-2                                    0/1     Pending     0          5d20h
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n openstack describe pod mariadb-server-1
+Name:           mariadb-server-1
+Namespace:      openstack
+Priority:       0
+Node:           <none>
+Labels:         application=mariadb
+                component=server
+                controller-revision-hash=mariadb-server-74cd64956
+                release_group=mariadb
+                statefulset.kubernetes.io/pod-name=mariadb-server-1
+Annotations:    configmap-bin-hash: cb0bb95d4dcade83796f9f4f5bbca8723ada30eb65f55d5d9930fb907c0a0eea
+                configmap-etc-hash: 05034f13b89a1ec3945984cc3209a9e1ef30dcb6f903cdd3783f37d0c2ddb991
+                mariadb-dbadmin-password-hash: 1e6d76f39aff6238267d343440e15ac49c0922ee715c5767bb3b2ef5efbb5394
+                mariadb-sst-password-hash: 1e6d76f39aff6238267d343440e15ac49c0922ee715c5767bb3b2ef5efbb5394
+                openstackhelm.openstack.org/release_uuid:
+Status:         Pending
+IP:
+IPs:            <none>
+Controlled By:  StatefulSet/mariadb-server
+Init Containers:
+  init:
+    Image:      quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      kubernetes-entrypoint
+    Environment:
+      POD_NAME:                    mariadb-server-1 (v1:metadata.name)
+      NAMESPACE:                   openstack (v1:metadata.namespace)
+      INTERFACE_NAME:              eth0
+      PATH:                        /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+      DEPENDENCY_SERVICE:
+      DEPENDENCY_DAEMONSET:
+      DEPENDENCY_CONTAINER:
+      DEPENDENCY_POD_JSON:
+      DEPENDENCY_CUSTOM_RESOURCE:
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+  mariadb-perms:
+    Image:      docker.io/openstackhelm/mariadb:latest-ubuntu_xenial
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      chown
+      -R
+      mysql:mysql
+      /var/lib/mysql
+    Environment:  <none>
+    Mounts:
+      /tmp from pod-tmp (rw)
+      /var/lib/mysql from mysql-data (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+Containers:
+  mariadb:
+    Image:       docker.io/openstackhelm/mariadb:latest-ubuntu_xenial
+    Ports:       3306/TCP, 4567/TCP
+    Host Ports:  0/TCP, 0/TCP
+    Command:
+      /tmp/start.py
+    Readiness:  exec [/tmp/readiness.sh] delay=30s timeout=15s period=30s #success=1 #failure=3
+    Environment:
+      POD_NAMESPACE:           openstack (v1:metadata.namespace)
+      MARIADB_REPLICAS:        3
+      POD_NAME_PREFIX:         mariadb-server
+      DISCOVERY_DOMAIN:        mariadb-discovery.openstack.svc.cluster.local
+      DIRECT_SVC_NAME:         mariadb-server
+      WSREP_PORT:              4567
+      STATE_CONFIGMAP:         mariadb-mariadb-state
+      MYSQL_DBADMIN_USERNAME:  root
+      MYSQL_DBADMIN_PASSWORD:  <set to the key 'MYSQL_DBADMIN_PASSWORD' in secret 'mariadb-dbadmin-password'>  Optional: false
+      MYSQL_DBSST_USERNAME:    sst
+      MYSQL_DBSST_PASSWORD:    <set to the key 'MYSQL_DBSST_PASSWORD' in secret 'mariadb-dbsst-password'>  Optional: false
+      MYSQL_DBAUDIT_USERNAME:  audit
+      MYSQL_DBAUDIT_PASSWORD:  <set to the key 'MYSQL_DBAUDIT_PASSWORD' in secret 'mariadb-dbaudit-password'>  Optional: false
+    Mounts:
+      /etc/mysql/admin_user.cnf from mariadb-secrets (ro,path="admin_user.cnf")
+      /etc/mysql/conf.d from mycnfd (rw)
+      /etc/mysql/conf.d/00-base.cnf from mariadb-etc (ro,path="00-base.cnf")
+      /etc/mysql/conf.d/99-force.cnf from mariadb-etc (ro,path="99-force.cnf")
+      /etc/mysql/my.cnf from mariadb-etc (ro,path="my.cnf")
+      /tmp from pod-tmp (rw)
+      /tmp/readiness.sh from mariadb-bin (ro,path="readiness.sh")
+      /tmp/start.py from mariadb-bin (ro,path="start.py")
+      /tmp/stop.sh from mariadb-bin (ro,path="stop.sh")
+      /var/lib/mysql from mysql-data (rw)
+      /var/run/mysqld from var-run (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+Conditions:
+  Type           Status
+  PodScheduled   False
+Volumes:
+  mysql-data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  mysql-data-mariadb-server-1
+    ReadOnly:   false
+  pod-tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  mycnfd:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  var-run:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  mariadb-bin:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      mariadb-bin
+    Optional:  false
+  mariadb-etc:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      mariadb-etc
+    Optional:  false
+  mariadb-secrets:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  mariadb-secrets
+    Optional:    false
+  mariadb-mariadb-token-zbrgl:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  mariadb-mariadb-token-zbrgl
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age                   From               Message
+  ----     ------            ----                  ----               -------
+  Warning  FailedScheduling  4m55s (x190 over 4h)  default-scheduler  0/8 nodes are available: 8 pod has unbound immediate PersistentVolumeClaims.
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n openstack describe pvc mysql-data-mariadb-server-1
+Name:          mysql-data-mariadb-server-1
+Namespace:     openstack
+StorageClass:  general
+Status:        Pending
+Volume:
+Labels:        application=mariadb
+               component=server
+               release_group=mariadb
+Annotations:   <none>
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:
+Access Modes:
+VolumeMode:    Filesystem
+Mounted By:    mariadb-server-1
+Events:
+  Type     Reason              Age                    From                         Message
+  ----     ------              ----                   ----                         -------
+  Warning  ProvisioningFailed  4m6s (x961 over 4h4m)  persistentvolume-controller  storageclass.storage.k8s.io "general" not found
+ubuntu@device:/opt/openstack-helm$
+```
+
+
+ ##### - Checking Ceph deployment status, per [OSH Persistent-Storage guide](https://docs.openstack.org/openstack-helm/latest/troubleshooting/persistent-storage.html)
+ ubuntu@device:/opt/openstack-helm$ ` MON_POD=$(kubectl get --no-headers pods -n=ceph -l="application=ceph,component=mon" | awk '{ print $1; exit }') ` <br/>
+ubuntu@device:/opt/openstack-helm$ ` kubectl exec -n ceph ${MON_POD} -- ceph -s `
+```
+  cluster:
+    id:     dfecae40-3104-4bda-9cbe-a0fe46d9fc6e
+    health: HEALTH_WARN
+            3 osds down
+            1 host (3 osds) down
+            1 root (3 osds) down
+            Reduced data availability: 93 pgs inactive
+
+  services:
+    mon: 3 daemons, quorum rkew6,rkew5,rkew4 (age 4h)
+    mgr: device(active, starting, since 1.6687s)
+    osd: 3 osds: 0 up (since 3h), 3 in (since 5d)
+
+  data:
+    pools:   18 pools, 93 pgs
+    objects: 0 objects, 0 B
+    usage:   0 B used, 0 B / 0 B avail
+    pgs:     100.000% pgs unknown
+             93 unknown
+
 ubuntu@device:/opt/openstack-helm$
 ```
