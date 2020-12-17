@@ -990,33 +990,33 @@ Last login: Fri Dec 11 21:16:08 2020 from 192.168.122.1
 ubuntu@device:~$
 ubuntu@device:~$
 ```
-ubuntu@device:~$ ` kubectl get po --all-namespaces -o=wide | gawk 'match($3, /([0-9])+\/([0-9])+/, a) {if (a[1] < a [92] && $4 != "Completed") print $0}' ` 
+ubuntu@device:~$ ` kubectl get po --all-namespaces -o=wide | gawk 'match($3, /([0-9])+\/([0-9])+/, a) {if (a[1] < a [2] && $4 != "Completed") print $0}' | cat -n ` 
 ```
-ceph            ceph-checkdns-758fd57744-bbf8k                      0/1     NodeAffinity            0          5d17h
-ceph            ceph-mds-59d4564c65-8lh25                           0/1     Init:0/2                1          5d16h
-ceph            ceph-mds-59d4564c65-pkzg9                           0/1     Init:0/2                0          5d16h
-ceph            ceph-osd-default-83945928-4tl62                     0/2     Init:CrashLoopBackOff   6          5d17h
-ceph            ceph-osd-default-83945928-qhbxh                     0/2     Init:CrashLoopBackOff   6          5d17h
-ceph            ceph-osd-default-83945928-xlptk                     0/2     Init:CrashLoopBackOff   4          3m38s
-ceph            ceph-pool-checkpgs-1607717700-9tg9j                 0/1     Init:0/1                0          3m40s
-ceph            ceph-pool-checkpgs-1607717700-rgl8n                 0/1     Init:Error              0          5d16h
-ingress-nginx   default-http-backend-65dd5949d9-djs9t               0/1     NodeAffinity            0          11d
-kube-system     coredns-6f85d5fb88-t7nfs                            0/1     NodeAffinity            0          11d
-kube-system     ingress-cm57s                                       0/1     Pending                 0          7d17h
-kube-system     ingress-klsxx                                       0/1     Pending                 0          7d17h
-kube-system     ingress-ptqfz                                       0/1     Pending                 0          7d17h
-kube-system     metrics-server-8449844bf-8smnh                      0/1     NodeAffinity            0          11d
-openstack       mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running                 1          5d16h
-openstack       mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running                 1          5d16h
-openstack       mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running                 1          5d16h
-openstack       mariadb-server-0                                    0/1     Pending                 0          5d16h
-openstack       mariadb-server-1                                    0/1     Pending                 0          5d16h
-openstack       mariadb-server-2                                    0/1     Pending                 0          5d16h
+     1  ceph            ceph-mds-59d4564c65-4ljd7                           0/1     Init:0/2                0          3h53m   10.42.176.17      rkew5    <none>           <none>
+     2  ceph            ceph-mds-59d4564c65-kr5qx                           0/1     Init:0/2                0          3h53m   10.42.212.143     rkew6    <none>           <none>
+     3  ceph            ceph-osd-default-83945928-4j9lw                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.88    rkew6    <none>           <none>
+     4  ceph            ceph-osd-default-83945928-fvshr                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.141   rkew5    <none>           <none>
+     5  ceph            ceph-osd-default-83945928-mbhkr                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.142   rkew4    <none>           <none>
+     6  ceph            ceph-pool-checkpgs-1607717700-9tg9j                 0/1     Init:0/1                0          4h17m   192.168.122.88    rkew6    <none>           <none>
+     7  ceph            ceph-pool-checkpgs-1607717700-rgl8n                 0/1     Init:Error              0          5d20h   192.168.122.88    rkew6    <none>           <none>
+     8  ingress-nginx   default-http-backend-65dd5949d9-djs9t               0/1     NodeAffinity            0          11d     <none>            rkew3    <none>           <none>
+     9  kube-system     coredns-6f85d5fb88-t7nfs                            0/1     NodeAffinity            0          11d     <none>            rkew2    <none>           <none>
+    10  kube-system     ingress-cm57s                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    11  kube-system     ingress-klsxx                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    12  kube-system     ingress-ptqfz                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    13  kube-system     metrics-server-8449844bf-8smnh                      0/1     NodeAffinity            0          11d     <none>            rkew4    <none>           <none>
+    14  openstack       mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running                 1          5d20h   10.42.176.15      rkew5    <none>           <none>
+    15  openstack       mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running                 1          5d20h   10.42.212.142     rkew6    <none>           <none>
+    16  openstack       mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running                 1          5d20h   10.42.44.92       rkew4    <none>           <none>
+    17  openstack       mariadb-server-0                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    18  openstack       mariadb-server-1                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    19  openstack       mariadb-server-2                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
 ubuntu@device:~$
 ```
 
  ##### - Job=_ceph-rbd-pool_ & pod=_ceph-rbd-pool-_ is dependent on Ceph OSD:
 ``` 
+
 ubuntu@device:/opt/openstack-helm$
 ubuntu@device:/opt/openstack-helm$ kubectl -n ceph logs ceph-rbd-pool-thw56 -c ceph-rbd-pool
 :
@@ -1048,6 +1048,11 @@ ubuntu@device:/opt/openstack-helm$
 
  ##### - Pods=_mariadb-server-_ pending for "_storageclass.storage.k8s.io "general" not found_"
 ```
+
+    17  openstack       mariadb-server-0                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    18  openstack       mariadb-server-1                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    19  openstack       mariadb-server-2                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+
 ubuntu@device:/opt/openstack-helm$
 ubuntu@device:/opt/openstack-helm$ kubectl -n openstack get pods|  grep mariadb-server-
 mariadb-server-0                                    0/1     Pending     0          5d20h
