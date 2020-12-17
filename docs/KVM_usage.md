@@ -300,6 +300,9 @@ vnet0      network    default    virtio      52:54:00:69:8a:08
   #### - RKE Worker Node 4. 
 ` sudo virt-install --name=rkew4 --ram=4096 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew4.qcow2,size=20 `
 
+  #### - RKE Worker Node for testing Ansible code 
+` sudo virt-install --name=test --ram=2048 --vcpus=2 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/test.qcow2,size=20 `
+
  ### - Once created, the VM using unattended-install ISO can be reached by SSH with user root from both DNS VM w Docker (where ISO got created in container) and the CentOS host:
 boburciu@dns:~/.ssh$ ` ssh root@rkem1.boburciu.privatecloud.com `
 ```

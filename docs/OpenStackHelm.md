@@ -1241,3 +1241,226 @@ ubuntu@device:/opt/openstack-helm$ ` kubectl exec -n ceph ${MON_POD} -- ceph -s 
 
 ubuntu@device:/opt/openstack-helm$
 ```
+
+ ##### - A pod=_ingress-_  is created by a _DaemonSet/ingress_ for each worker with _Node-Selector:  openstack-control-plane=enabled_, but the ports _Ports:       80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP_ are not open on the worker nodes
+```
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n kube-system describe po ingress-56vqk | tail
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  16s (x17 over 21m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n kube-system describe po ingress-88ssv | tail
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  31s (x17 over 21m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@device:/opt/openstack-helm$
+ubuntu@device:/opt/openstack-helm$ kubectl -n kube-system describe DaemonSet/ingress
+Name:           ingress
+Selector:       app=ingress-api,application=ingress,component=server,release_group=ingress-kube-system
+Node-Selector:  openstack-control-plane=enabled
+Labels:         app=ingress-api
+                application=ingress
+                component=server
+                release_group=ingress-kube-system
+Annotations:    deprecated.daemonset.template.generation: 3
+                openstackhelm.openstack.org/release_uuid:
+Desired Number of Nodes Scheduled: 6
+Current Number of Nodes Scheduled: 6
+Number of Nodes Scheduled with Up-to-date Pods: 6
+Number of Nodes Scheduled with Available Pods: 0
+Number of Nodes Misscheduled: 0
+Pods Status:  0 Running / 6 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           app=ingress-api
+                    application=ingress
+                    component=server
+                    release_group=ingress-kube-system
+  Annotations:      configmap-bin-hash: 7a6b18fef96aa3d4d853faf80af396bc0fcf2c1326726ac33af1f20fb0328f65
+                    configmap-etc-hash: d6e97198fa89eaae0116024f077f9f5ab5730354a40d51a23befbb02ad797cc0
+                    openstackhelm.openstack.org/release_uuid:
+  Service Account:  ingress-kube-system-ingress
+  Init Containers:
+   init:
+    Image:      quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      kubernetes-entrypoint
+    Environment:
+      POD_NAME:                     (v1:metadata.name)
+      NAMESPACE:                    (v1:metadata.namespace)
+      INTERFACE_NAME:              eth0
+      PATH:                        /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+      DEPENDENCY_SERVICE:
+      DEPENDENCY_DAEMONSET:
+      DEPENDENCY_CONTAINER:
+      DEPENDENCY_POD_JSON:
+      DEPENDENCY_CUSTOM_RESOURCE:
+    Mounts:                        <none>
+  Containers:
+   ingress:
+    Image:       quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.32.0
+    Ports:       80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+    Command:
+      /tmp/ingress-controller.sh
+      start
+    Liveness:   http-get http://:10254/healthz delay=10s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:10254/healthz delay=0s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      POD_NAME:              (v1:metadata.name)
+      POD_NAMESPACE:         (v1:metadata.namespace)
+      PORT_HTTP:            80
+      PORT_HTTPS:           443
+      PORT_STATUS:          10246
+      PORT_STREAM:          10247
+      PORT_PROFILER:        10245
+      PORT_HEALTHZ:         10254
+      DEFAULT_SERVER_PORT:  8181
+      RELEASE_NAME:         ingress-kube-system
+      ERROR_PAGE_SERVICE:   ingress-error-pages
+      INGRESS_CLASS:        nginx-cluster
+    Mounts:
+      /tmp from pod-tmp (rw)
+      /tmp/ingress-controller.sh from ingress-bin (ro,path="ingress-controller.sh")
+  Volumes:
+   pod-tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+   ingress-bin:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      ingress-bin
+    Optional:  false
+Events:
+  Type    Reason            Age   From                  Message
+  ----    ------            ----  ----                  -------
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-nr67n
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-5kp7z
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-7sr7f
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-56vqk
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-jmb69
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-gz9s2
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-88ssv
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-b526h
+ubuntu@device:/opt/openstack-helm$
+
+
+[boburciu@r220 KVM-notes-proj]$ ssh ubuntu@rkem2
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Thu Dec 17 14:56:57 2020 from 192.168.122.1
+ubuntu@device:~$
+ubuntu@device:~$
+ubuntu@device:~$ sudo iptables -t filter -L INPUT --line-numbers -n
+Chain INPUT (policy ACCEPT)
+num  target     prot opt source               destination
+1    cali-INPUT  all  --  0.0.0.0/0            0.0.0.0/0            /* cali:Cz_u1IQiXIMmKD4c */
+2    KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+3    KUBE-EXTERNAL-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes externally-visible service portals */
+4    KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+ubuntu@device:~$ sudo iptables -t filter -L OUTPUT --line-numbers -n
+Chain OUTPUT (policy ACCEPT)
+num  target     prot opt source               destination
+1    cali-OUTPUT  all  --  0.0.0.0/0            0.0.0.0/0            /* cali:tVnHkvAo15HuiPy0 */
+2    KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+3    KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+ubuntu@device:~$ 
+ubuntu@device:~$ sudo ufw status verbose
+Status: inactive
+ubuntu@device:~$ sudo ufw app list
+Available applications:
+  OpenSSH
+ubuntu@device:~$
+```
+ ##### - Will run an Ansible playbook to open these ports, using [community.general.ufw – Manage Buntu firewall with UFW](https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html):
+[boburciu@r220 ~]$ ` ansible-galaxy collection install community.general `
+```
+Process install dependency map
+Starting collection install process
+Installing 'ansible.netcommon:1.4.1' to '/home/boburciu/.ansible/collections/ansible_collections/ansible/netcommon'
+Installing 'google.cloud:1.0.1' to '/home/boburciu/.ansible/collections/ansible_collections/google/cloud'
+Installing 'community.general:1.3.0' to '/home/boburciu/.ansible/collections/ansible_collections/community/general'
+Installing 'community.kubernetes:1.1.1' to '/home/boburciu/.ansible/collections/ansible_collections/community/kubernetes'
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ cd ~/OpenStackHelm_prereq/
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` cat open_OpenStackControl_ports.yml `
+```
+---
+- name: Open ports for rke worker nodes to be labeled as openstack-control-plane=enabled
+  hosts: ubuntu-rke-workers
+  tasks:
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        policy: allow
+
+    - name: Allow all access to 80/TCP
+      community.general.ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Allow all access to 443/TCP
+      community.general.ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Allow all access to 10254/TCP
+      community.general.ufw:
+        rule: allow
+        port: '10254'
+        proto: tcp
+
+    - name: Allow all access to 8181/TCP
+      community.general.ufw:
+        rule: allow
+        port: '8181'
+        proto: tcp
+
+    - name: Deny all IPv6 TCP traffic, to only permit IPv4
+      community.general.ufw:
+        rule: deny
+        proto: tcp
+        to_ip: "::"
+        insert: 0
+        insert_relative_to: first-ipv6
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible-playbook open_OpenStackControl_ports.yml -v `
+
+PLAY RECAP *************************************************************************************************************************
+rkew1                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew2                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew3                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew4                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew5                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew6                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+[boburciu@r220 OpenStackHelm_prereq]$
+```
