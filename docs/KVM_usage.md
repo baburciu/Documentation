@@ -355,3 +355,20 @@ Connection to rkem1.boburciu.privatecloud.com closed.
 
 [boburciu@r220 ~]$
 ```
+
+## IV. How to connect to KVM network from CenOS host:
+
+ ## - Add route in Win w next-hop the CentOS host: 
+ C:\Windows\system32> ` route add 192.168.122.0 MASK 255.255.255.0 192.168.100.10 `
+``` 
+ OK!
+
+C:\Windows\system32>
+```
+ ## - Permit Lens for K8s connect to the K8s config host (mentioned in *~/. kube/config *):
+ [boburciu@r220 ~]$ ` sudo iptables -I FORWARD 9 -p tcp --dport 6443  -d 192.168.122.0/24 -o virbr0 -j ACCEPT `
+
+ ## - Allow http to Jenkins webserver 8080:
+ [boburciu@r220 ~]$ ` sudo iptables -I FORWARD 10 -p tcp --dport 8080  -d 192.168.122.0/24 -o virbr0 -j ACCEPT `
+
+  ## - Connect to http://192.168.122.56:8080/
