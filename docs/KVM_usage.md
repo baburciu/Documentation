@@ -369,6 +369,6 @@ C:\Windows\system32>
  [boburciu@r220 ~]$ ` sudo iptables -I FORWARD 9 -p tcp --dport 6443  -d 192.168.122.0/24 -o virbr0 -j ACCEPT `
 
  ## - Allow http to Jenkins webserver 8080:
- [boburciu@r220 ~]$ ` sudo iptables -I FORWARD 10 -p tcp --dport 8080  -d 192.168.122.0/24 -o virbr0 -j ACCEPT `
+ [boburciu@r220 ~]$ ` sudo iptables -I FORWARD 9 -p tcp --dport 8080  -d 192.168.122.0/24 -o virbr0 -j ACCEPT `
 
   ## - Connect to http://192.168.122.56:8080/
