@@ -87,8 +87,9 @@ v1.19.4-rancher1-1
 ## 1. Create the K8s cluster by Rancher K8s Engine (RKE):
 
  ### - We have the KVMs to form the K8s cluster created and added in Ansible /etc/ansible/hosts:
-```
+
 [boburciu@r220 ~]$ ` nslookup rkem1; nslookup rkem2; nslookup rkew1; nslookup rkew2; nslookup rkew3; nslookup rkew4; `
+```
 Server:         192.168.122.64
 Address:        192.168.122.64#53
 
@@ -688,9 +689,207 @@ kube-system     tiller-deploy-7b56c8dfb7-7jsjl            1/1     Running       
 ubuntu@device:~$
 ```
 
+## 4. In order to remove the Kubernetes components from nodes, you use the `rke remove` command (and if you have other workloads/pods in cluster, you can delete their namespaces to delete them).
+```
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ cd K8s_cluster_RKE
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$ rke version
+INFO[0000] Running RKE version: v1.2.3
+Server Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCommit:"d360454c9bcd1634cf4cc52d1867af5491dc9c5f", GitTreeState:"clean", BuildDate:"2020-11-11T13:09:17Z", GoVersion:"go1.15.2", Compiler:"gc", Platform:"linux/amd64"}
+[boburciu@r220 K8s_cluster_RKE]$
+[boburciu@r220 K8s_cluster_RKE]$
+```
+[boburciu@r220 K8s_cluster_RKE]$ ` rke remove `
+```
+INFO[0000] Running RKE version: v1.2.3
+Are you sure you want to remove Kubernetes cluster [y/n]: y
+INFO[0005] Tearing down Kubernetes cluster
+INFO[0005] [dialer] Setup tunnel for host [rkew1]
+INFO[0005] [dialer] Setup tunnel for host [rkew5]
+INFO[0005] [dialer] Setup tunnel for host [rkew4]
+INFO[0005] [dialer] Setup tunnel for host [rkem2]
+INFO[0005] [dialer] Setup tunnel for host [rkew2]
+INFO[0005] [dialer] Setup tunnel for host [rkew3]
+INFO[0005] [dialer] Setup tunnel for host [rkem1]
+INFO[0005] [dialer] Setup tunnel for host [rkew6]
+:
+INFO[0022] Removing local admin Kubeconfig: ./kube_config_cluster.yml
+INFO[0022] Local admin Kubeconfig removed successfully
+INFO[0022] Removing state file: ./cluster.rkestate
+INFO[0022] State file removed successfully
+INFO[0022] Cluster removed successfully
+[boburciu@r220 K8s_cluster_RKE]$
+```
+
+  ## Check what Docker containers are still running on former RKE cluster members: 
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were unable to read either as JSON nor YAML, these are
+the errors we got from each: JSON: No JSON object could be decoded  Syntax Error while loading YAML.   found unexpected ':'
+The error appears to be in '/etc/ansible/hosts': line 1, column 5, but may be elsewhere in the file depending on the exact
+syntax problem.  The offending line appears to be:   [VMs:children]     ^ here
+[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin: /etc/ansible/hosts:2: Section [VMs:children] includes
+undefined group: rancheos
+[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather than running sudo
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkem1 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkem1 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+5b13c5083ea1        0f351f210d5e        "start_runit"       8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-qxqlq_kube-system_848d438b-107e-4523-9a49-c424d4498aaa_11
+1551d51c1330        rancher/pause:3.2   "/pause"            8 hours ago         Up 8 hours                              k8s_POD_calico-node-qxqlq_kube-system_848d438b-107e-4523-9a49-c424d4498aaa_11
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew2 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew2 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+c1d4cbfceb67        bfe3a36ebd25        "/coredns -conf /etc…"   8 hours ago         Up 8 hours                              k8s_coredns_coredns-6f85d5fb88-nfgf2_kube-system_e47b9091-3cbd-4df8-b0be-ec45a56263cf_5
+21d8542d9139        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_coredns-6f85d5fb88-nfgf2_kube-system_e47b9091-3cbd-4df8-b0be-ec45a56263cf_5
+0536927dbef4        0f351f210d5e        "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-nw6tp_kube-system_49e3bb8f-ee80-44e6-81a4-94b04d97bf85_9
+2eb7135937bf        1f0ca6d99110        "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-b9gcr_ingress-nginx_73cc8849-d720-4146-9833-2be92f67cae7_10
+5d7fa533c1d9        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-nw6tp_kube-system_49e3bb8f-ee80-44e6-81a4-94b04d97bf85_9
+80eb1bd41b9c        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-b9gcr_ingress-nginx_73cc8849-d720-4146-9833-2be92f67cae7_9
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew3 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew3 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+df753c91b13a        03feeb39a75a        "/usr/bin/kube-contr…"   8 hours ago         Up 8 hours                              k8s_calico-kube-controllers_calico-kube-controllers-87d89ff98-df25p_kube-system_4ac5b875-e369-49a4-bc28-d967ed7034d6_9
+48ed4f6d50bd        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-kube-controllers-87d89ff98-df25p_kube-system_4ac5b875-e369-49a4-bc28-d967ed7034d6_23
+1da23bd2ef6f        0f351f210d5e        "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-9zzm2_kube-system_44f2d0af-763c-4711-a52d-993612165a6f_9
+97e558922c4f        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-9zzm2_kube-system_44f2d0af-763c-4711-a52d-993612165a6f_9
+f3bb0aad3e61        1f0ca6d99110        "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-pf6hc_ingress-nginx_d2db3f84-440d-4714-a8d5-983bd4cc01d4_9
+a3250c6705c9        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-pf6hc_ingress-nginx_d2db3f84-440d-4714-a8d5-983bd4cc01d4_9
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew1 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew1 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+85603379b1da        4f1064cf7caf        "/cluster-proportion…"   8 hours ago         Up 8 hours                              k8s_autoscaler_coredns-autoscaler-79599b9dc6-6phrb_kube-system_53b8d5be-8f95-4d41-8d63-237cbd87eaec_9
+c2f3d5e0bb1f        bfe3a36ebd25        "/coredns -conf /etc…"   8 hours ago         Up 8 hours                              k8s_coredns_coredns-6f85d5fb88-fwdgr_kube-system_3fe6e229-e48c-4a6f-9434-92cbcd3071e0_9
+e01b44e8b031        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_coredns-autoscaler-79599b9dc6-6phrb_kube-system_53b8d5be-8f95-4d41-8d63-237cbd87eaec_18
+dc7e9f7d76b5        0f351f210d5e        "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-b8wh5_kube-system_4d432f3c-e99f-45f6-bb7e-5d11ad596659_9
+b12a4db470ed        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_coredns-6f85d5fb88-fwdgr_kube-system_3fe6e229-e48c-4a6f-9434-92cbcd3071e0_9
+dd255e46d97f        1f0ca6d99110        "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-np27v_ingress-nginx_c00ea486-b475-48f1-91af-9184a0bb0362_9
+801b40b3e8fb        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-b8wh5_kube-system_4d432f3c-e99f-45f6-bb7e-5d11ad596659_9
+d7f8fa9c47df        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-np27v_ingress-nginx_c00ea486-b475-48f1-91af-9184a0bb0362_9
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkem2 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkem2 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+1c14eb1b8020        0f351f210d5e        "start_runit"       8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-zwvq6_kube-system_09c722f3-a281-428b-9dcc-ef04463def2d_10
+cf592ce569e6        rancher/pause:3.2   "/pause"            8 hours ago         Up 8 hours                              k8s_POD_calico-node-zwvq6_kube-system_09c722f3-a281-428b-9dcc-ef04463def2d_10
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew4 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew4 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE                    COMMAND                  CREATED             STATUS              PORTS               NAMES
+04a23248e876        rancher/metrics-server   "/metrics-server --k…"   8 hours ago         Up 8 hours                              k8s_metrics-server_metrics-server-8449844bf-2zpxm_kube-system_1d7e3e69-764b-43c0-be0c-35a09872658e_10
+1ec38d31fb18        846921f0fe0e             "/server"                8 hours ago         Up 8 hours                              k8s_ingress-error-pages_ingress-error-pages-667b646495-np9ms_kube-system_5836245d-26f3-403e-b615-6986781ae7c2_5
+547cfadfc0ce        b5af743e5984             "/server"                8 hours ago         Up 8 hours                              k8s_default-http-backend_default-http-backend-65dd5949d9-csjv7_ingress-nginx_7f26e6df-7818-4674-a705-2421ca02a1fc_8
+db94a4e5f55c        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_ingress-error-pages-667b646495-np9ms_kube-system_5836245d-26f3-403e-b615-6986781ae7c2_6
+73c26b6472d9        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_metrics-server-8449844bf-2zpxm_kube-system_1d7e3e69-764b-43c0-be0c-35a09872658e_8
+92281b1dda50        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_default-http-backend-65dd5949d9-csjv7_ingress-nginx_7f26e6df-7818-4674-a705-2421ca02a1fc_8
+e6f0172d2b79        0f351f210d5e             "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-2b4f8_kube-system_99c15da8-01fe-4a94-ac2e-9899599a5810_9
+8bad77f0f009        3f39089e9083             "/tiller"                8 hours ago         Up 8 hours                              k8s_tiller_tiller-deploy-7b56c8dfb7-7jsjl_kube-system_8f7bac89-c2cc-4b29-a1a3-81a38ba8de9e_7
+30693633371b        846921f0fe0e             "/server"                8 hours ago         Up 8 hours                              k8s_ingress-error-pages_ingress-error-pages-667b646495-lxt9z_kube-system_ddf1b5a9-fed1-434c-a1f5-592c8ca067f1_5
+3c95a098c095        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_tiller-deploy-7b56c8dfb7-7jsjl_kube-system_8f7bac89-c2cc-4b29-a1a3-81a38ba8de9e_8
+249dd22ed785        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_ingress-error-pages-667b646495-lxt9z_kube-system_ddf1b5a9-fed1-434c-a1f5-592c8ca067f1_5
+2824bfaae618        1f0ca6d99110             "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-zkvgj_ingress-nginx_5238c184-a0db-4a03-b282-35fe27ece712_9
+c57c50bbc565        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-2b4f8_kube-system_99c15da8-01fe-4a94-ac2e-9899599a5810_9
+f6fa59df1cde        rancher/pause:3.2        "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-zkvgj_ingress-nginx_5238c184-a0db-4a03-b282-35fe27ece712_9
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew5 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew5 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+f0fb36772fb7        0f351f210d5e        "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-sth2x_kube-system_82847212-6133-432d-b837-40bf79e83bd0_6
+c5914c5b005e        1f0ca6d99110        "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-cdghc_ingress-nginx_dbe55e7d-e804-460e-ae69-601ad8f001e1_6
+7d531dc01273        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-sth2x_kube-system_82847212-6133-432d-b837-40bf79e83bd0_6
+fe041ae8f0de        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-cdghc_ingress-nginx_dbe55e7d-e804-460e-ae69-601ad8f001e1_6
+[DEPRECATION WARNING]: Distribution Ubuntu 18.04 on host rkew6 should use /usr/bin/python3, but is using /usr/bin/python for
+backward compatibility with prior Ansible releases. A future Ansible release will default to using the discovered platform
+python for this host. See https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for more
+information. This feature will be removed in version 2.12. Deprecation warnings can be disabled by setting
+deprecation_warnings=False in ansible.cfg.
+rkew6 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+11d51a1bd744        0f351f210d5e        "start_runit"            8 hours ago         Up 8 hours                              k8s_calico-node_calico-node-8dxsj_kube-system_970ab7f7-42bd-41a0-b2fd-791fb0fd43c7_6
+3cd33d1f9409        1f0ca6d99110        "/usr/bin/dumb-init …"   8 hours ago         Up 8 hours                              k8s_nginx-ingress-controller_nginx-ingress-controller-lftcm_ingress-nginx_99d750eb-69a1-4a38-86fe-b2b9b5eee2ed_6
+504e87c0c361        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_calico-node-8dxsj_kube-system_970ab7f7-42bd-41a0-b2fd-791fb0fd43c7_6
+340d32f95453        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-lftcm_ingress-nginx_99d750eb-69a1-4a38-86fe-b2b9b5eee2ed_6
+[boburciu@r220 K8s_cluster_RKE]$
+```
+  ## Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+ 1015  ssh ubuntu@rkem1
+ 1016  ssh ubuntu@rkem2
+ 1017  ssh ubuntu@rkew1
+ 1018  ssh ubuntu@rkew2
+ 1019  ssh ubuntu@rkew3
+ 1020  ssh ubuntu@rkew4
+ 1021  ssh ubuntu@rkew5
+ 1022  ssh ubuntu@rkew6
+ 1023  history
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ ssh ubuntu@rkew6
+
+Last login: Fri Dec 11 20:04:05 2020 from 192.168.122.1
+ubuntu@device:~$
+ubuntu@device:~$  ` sudo docker stop $(sudo docker ps -aq) `
+
+ubuntu@device:~$  ` sudo docker rm -v $(sudo docker ps -aq) `
+ubuntu@device:~$ exit
+logout
+Connection to rkew6 closed.
+[boburciu@r220 ~]$ 
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
+
+  ## Check all Docker volumes on former RKE members:
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
+```
+[WARNING]: I..
+rkem2 | CHANGED | rc=0 >>
+
+rkew1 | CHANGED | rc=0 >>
+
+rkew3 | CHANGED | rc=0 >>
+
+rkew2 | CHANGED | rc=0 >>
+
+rkem1 | CHANGED | rc=0 >>
+
+rkew4 | CHANGED | rc=0 >>
+
+rkew6 | CHANGED | rc=0 >>
+
+rkew5 | CHANGED | rc=0 >>
+
+[boburciu@r220 K8s_cluster_RKE]$
+```
+
 # Managing automatic RKE Kubernetes cluster creation via Rancher server
 
-## 4. Intall Rancher Server as container on VM:
+## 0. Intall Rancher Server as container on VM:
 
 ubuntu@device:~$ ` ssh boburciu@DNSServer `
 ```
@@ -719,4 +918,4 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 75e9e928a103        rancher/rancher     "entrypoint.sh"     8 minutes ago       Up 8 minutes        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   keen_jones
 boburciu@dns:~$  
 ```
-  ## - Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
+  ## 1. Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
