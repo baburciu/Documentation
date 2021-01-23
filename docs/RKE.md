@@ -1,4 +1,4 @@
-# Managing RKE Kubernetes cluster
+# Managing manual RKE Kubernetes cluster creation
  
 ## 0. Setup RKE:
 
@@ -686,5 +686,37 @@ kube-system     rke-metrics-addon-deploy-job-2zlml        0/1     Completed     
 kube-system     rke-network-plugin-deploy-job-vnh4w       0/1     Completed      0          3d20h
 kube-system     tiller-deploy-7b56c8dfb7-7jsjl            1/1     Running        1          117m
 ubuntu@device:~$
-
 ```
+
+# Managing automatic RKE Kubernetes cluster creation via Rancher server
+
+## 4. Intall Rancher Server as container on VM:
+
+ubuntu@device:~$ ` ssh boburciu@DNSServer `
+```
+boburciu@dnsserver's password: password
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-128-generic x86_64)
+
+boburciu@dns:~$ 
+boburciu@dns:~$ 
+boburciu@dns:~$ 
+```
+boburciu@dns:~$ ` sudo docker run -d --restart=unless-stopped -p 80:80 -p 443:443 --privileged rancher/rancher `
+```
+[sudo] password for boburciu: 
+Unable to find image 'rancher/rancher:latest' locally
+latest: Pulling from rancher/rancher
+:
+:
+2e9b10fe3352: Pull complete 
+Digest: sha256:961980e4d64e2c9b4c6830f61b0a75b6b86695516303a2fc5e053d642e91e958
+Status: Downloaded newer image for rancher/rancher:latest
+75e9e928a10318c096dbbb668d5a99eab9420939af770ddd797321554c75fdc4
+boburciu@dns:~$ 
+boburciu@dns:~$ 
+boburciu@dns:~$ boburciu@dns:~$ sudo docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS                                      NAMES
+75e9e928a103        rancher/rancher     "entrypoint.sh"     8 minutes ago       Up 8 minutes        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   keen_jones
+boburciu@dns:~$  
+```
+  ## - Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_

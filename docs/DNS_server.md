@@ -219,3 +219,80 @@ nameserver 127.0.0.53
 search boburciu.privatecloud.com
 ubuntu@device:~$
 ```
+
+## IV. T-shoot and restart DNS server with same config:
+ ### -  If the ports needed are said to be already used, kill those processes:
+
+boburciu@dns:~/DNS_server$ ` sudo docker-compose up `
+```
+Starting 8340069eaf31_dns_server_bind_DNS_server_container_1 ... 
+Starting 8340069eaf31_dns_server_bind_DNS_server_container_1 ... error
+
+ERROR: for 8340069eaf31_dns_server_bind_DNS_server_container_1  Cannot start service bind_DNS_server_container: driver failed programming external connectivity on endpoint 8340069eaf31_dns_server_bind_DNS_server_container_1 (35cb9b2155ce6b393bb721a04878cecb764c0f3ab5838af174b00249a648a2a3): Error starting userland proxy: listen tcp 192.168.122.64:53: bind: address already in use
+
+ERROR: for bind_DNS_server_container  Cannot start service bind_DNS_server_container: driver failed programming external connectivity on endpoint 8340069eaf31_dns_server_bind_DNS_server_container_1 (35cb9b2155ce6b393bb721a04878cecb764c0f3ab5838af174b00249a648a2a3): Error starting userland proxy: listen tcp 192.168.122.64:53: bind: address already in use
+ERROR: Encountered errors while bringing up the project.
+```
+boburciu@dns:~/DNS_server$ 
+boburciu@dns:~/DNS_server$ ` sudo lsof -t -i:53 `
+```
+1446
+1459
+boburciu@dns:~/DNS_server$ ps aux | grep 1446
+root      1446  0.0  0.2 405648  4192 ?        Sl   16:49   0:00 /usr/bin/docker-proxy -proto tcp -host-ip 192.168.122.64 -host-port 53 -container-ip 172.17.0.2 -container-port 53
+boburciu  2870  0.0  0.0  13220  1036 pts/0    S+   17:04   0:00 grep --color=auto 1446
+boburciu@dns:~/DNS_server$ 
+boburciu@dns:~/DNS_server$ ps aux | grep 1459
+root      1459  0.0  0.2 700576  4436 ?        Sl   16:49   0:00 /usr/bin/docker-proxy -proto udp -host-ip 192.168.122.64 -host-port 53 -container-ip 172.17.0.2 -container-port 53
+boburciu  2872  0.0  0.0  13220  1040 pts/0    S+   17:05   0:00 grep --color=auto 1459
+```
+boburciu@dns:~/DNS_server$ ` sudo kill -9 $(sudo lsof -t -i:53) `
+```
+boburciu@dns:~/DNS_server$ 
+boburciu@dns:~/DNS_server$ netstat -tulpn
+(Not all processes could be identified, non-owned process info
+ will not be shown, you would have to be root to see it all.)
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 :::22                   :::*                    LISTEN      -                   
+tcp6       0      0 :::9090                 :::*                    LISTEN      -                   
+udp        0      0 192.168.122.64:68       0.0.0.0:*                           -                   
+boburciu@dns:~/DNS_server$ 
+```
+
+ ### -  If _/srv/docker_ file-system is returned as read-only, remove and reinstall Docker:
+ 
+boburciu@dns:~/DNS_server$ ` sudo docker-compose up `
+```
+Starting 8340069eaf31_dns_server_bind_DNS_server_container_1 ... error
+
+ERROR: for 8340069eaf31_dns_server_bind_DNS_server_container_1  Cannot start service bind_DNS_server_container: error while creating mount source path '/srv/docker/bind': mkdir /srv/docker: read-only file system
+
+ERROR: for bind_DNS_server_container  Cannot start service bind_DNS_server_container: error while creating mount source path '/srv/docker/bind': mkdir /srv/docker: read-only file system
+ERROR: Encountered errors while bringing up the project.
+boburciu@dns:~/DNS_server$ 
+boburciu@dns:~/DNS_server$ sudo docker ps -a
+CONTAINER ID        IMAGE                            COMMAND                  CREATED             STATUS                      PORTS                                                                            NAMES
+75e9e928a103        rancher/rancher                  "entrypoint.sh"          50 minutes ago      Exited (1) 32 minutes ago                                                                                    keen_jones
+89652d1a94d5        4a87daf63151                     "/bin/sh -c 'apt-get…"   7 weeks ago         Exited (100) 7 weeks ago                                                                                     hardcore_ellis
+a45caef7d612        4a87daf63151                     "/bin/sh -c 'apt-get…"   7 weeks ago         Exited (100) 7 weeks ago                                                                                     bold_mclaren
+b4e3800bbc0f        4a87daf63151                     "/bin/sh -c 'apt-get…"   7 weeks ago         Exited (100) 7 weeks ago                                                                                     peaceful_sammet
+75fd92648814        4a87daf63151                     "/bin/sh -c 'apt-get…"   7 weeks ago         Exited (100) 7 weeks ago                                                                                     condescending_turing
+8340069eaf31        sameersbn/bind:latest            "/sbin/entrypoint.sh…"   2 months ago        Created                     192.168.122.64:53->53/tcp, 192.168.122.64:53->53/udp, 0.0.0.0:10000->10000/tcp   8340069eaf31_dns_server_bind_DNS_server_container_1
+1c43cb02601c        sameersbn/bind:9.16.1-20200524   "/sbin/entrypoint.sh…"   2 months ago        Created                                                                                                      bind_DNS_container
+fcaa48ca098f        hello-world                      "/hello"                 2 months ago        Exited (0) 2 months ago                                                                                      sweet_grothendieck
+boburciu@dns:~/DNS_server$ sudo docker start 8340069eaf31
+Error response from daemon: error while creating mount source path '/srv/docker/bind': mkdir /srv/docker: read-only file system
+Error: failed to start containers: 8340069eaf31
+boburciu@dns:~/DNS_server$  
+```
+boburciu@dns:~/DNS_server$ ` sudo apt-get remove docker docker-engine docker.io containerd runc  `  
+boburciu@dns:~/DNS_server$ ` curl -fsSL https://get.docker.com -o get-docker.sh  `  <br/>
+boburciu@dns:~/DNS_server$ ` sudo sh get-docker.sh  `  <br/>
+boburciu@dns:~/DNS_server$ ` sudo docker ps `
+```
+CONTAINER ID        IMAGE                   COMMAND                  CREATED             STATUS              PORTS                                                                            NAMES
+c6dc56569d50        sameersbn/bind:latest   "/sbin/entrypoint.sh…"   2 months ago        Up 2 minutes        192.168.122.64:53->53/tcp, 192.168.122.64:53->53/udp, 0.0.0.0:10000->10000/tcp   dns_server_bind_DNS_server_container_1
+boburciu@dns:~/DNS_server$ 
+```

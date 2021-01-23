@@ -1394,7 +1394,221 @@ Available applications:
   OpenSSH
 ubuntu@device:~$
 ```
- ##### - Will run an Ansible playbook to open these ports, using [community.general.ufw – Manage Buntu firewall with UFW](https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html):
+ubuntu@device:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i the describe pod events are: ";echo ""; kubectl -n kube-system describe pod $i | tail -12 ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-dw8jc the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  75s (x79 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+-----------------------------------------------------------------------
+
+for ingress-n9spd the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  76s (x80 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+-----------------------------------------------------------------------
+
+for ingress-xhc57 the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  77s (x79 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@device:~$
+```
+ ##### - How to verify what ports are expected by the _ingress-*_ pods:
+ubuntu@device:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i Host Ports are: ";echo ""; kubectl -n kube-system describe pod $i | grep "Host Port" ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-b5gpc Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+-----------------------------------------------------------------------
+
+for ingress-phz8j Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+-----------------------------------------------------------------------
+
+for ingress-tjvhh Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+ubuntu@device:~$
+ubuntu@device:~$
+```
+
+ ##### - How to verify the open ports for all RKE worker nodes:
+[boburciu@r220 ~]$  ` cat /etc/ansible/hosts | grep -A6 ubuntu-rke-workers | tail -6 `
+```
+rkew1  ansible_user=root
+rkew2  ansible_user=root
+rkew3  ansible_user=root
+rkew4  ansible_user=root
+rkew5  ansible_user=root
+rkew6  ansible_user=root
+```
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$[boburciu@r220 ~]$
+[boburciu@r220 ~]$ ` for i in `cat /etc/ansible/hosts | grep -A6 ubuntu-rke-workers | tail -6 | awk '{print $1}'`; do echo "-----------------------------------------------------------------------";  echo "UFW open ports on $i"; echo ""; ssh ubuntu@$i sudo ufw status verbose; done `
+```
+-----------------------------------------------------------------------
+UFW open ports on rkew1
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew2
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew3
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew4
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew5
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew6
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+[boburciu@r220 ~]$
+```
+
+ ##### - Will run an Ansible playbook to open these ports, using [community.general.ufw – Manage Ubuntu firewall with UFW](https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html):
 [boburciu@r220 ~]$ ` ansible-galaxy collection install community.general `
 ```
 Process install dependency map
@@ -1453,7 +1667,7 @@ Installing 'community.kubernetes:1.1.1' to '/home/boburciu/.ansible/collections/
 [boburciu@r220 OpenStackHelm_prereq]$
 ```
 [boburciu@r220 OpenStackHelm_prereq]$ ` ansible-playbook open_OpenStackControl_ports.yml -v `
-
+```
 PLAY RECAP *************************************************************************************************************************
 rkew1                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 rkew2                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
@@ -1463,4 +1677,71 @@ rkew5                      : ok=7    changed=6    unreachable=0    failed=0    s
 rkew6                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
 [boburciu@r220 OpenStackHelm_prereq]$
+```
+
+ ##### - Delete the _ingress-*_pods to try again use the new ports on workers:
+ubuntu@device:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i the describe pod events are: ";echo ""; kubectl -n kube-system delete pod $i  ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-dw8jc :
+
+pod "ingress-dw8jc" deleted
+-----------------------------------------------------------------------
+
+for ingress-n9spd :
+
+pod "ingress-n9spd" deleted
+-----------------------------------------------------------------------
+
+for ingress-xhc57 :
+
+pod "ingress-xhc57" deleted
+ubuntu@device:~$
+```
+
+ ##### - Get all pod ports and their NodePorts used already by pods sitting on a paritcular node:
+ubuntu@device:~$ ` for i in `kubectl -n kube-system get pods -o=wide --field-selector spec.nodeName=rkew4 | tail -n +2 | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i Host Ports are: ";echo ""; kubectl -n kube-system describe pod $i | grep "Port" ;done `
+```
+-----------------------------------------------------------------------
+
+for calico-node-2b4f8 Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:          <none>
+    Host Port:     <none>
+    Port:           <none>
+    Host Port:      <none>
+    Port:           <none>
+    Host Port:      <none>
+-----------------------------------------------------------------------
+
+for ingress-error-pages-667b646495-lxt9z Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:           8080/TCP
+    Host Port:      0/TCP
+-----------------------------------------------------------------------
+
+for ingress-error-pages-667b646495-np9ms Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:           8080/TCP
+    Host Port:      0/TCP
+-----------------------------------------------------------------------
+
+for metrics-server-8449844bf-2zpxm Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+-----------------------------------------------------------------------
+
+for tiller-deploy-7b56c8dfb7-7jsjl Host Ports are:
+
+    Ports:          44134/TCP, 44135/TCP
+    Host Ports:     0/TCP, 0/TCP
+ubuntu@device:~$
 ```
