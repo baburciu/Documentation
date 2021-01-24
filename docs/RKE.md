@@ -841,6 +841,7 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 [boburciu@r220 K8s_cluster_RKE]$
 ```
   ## Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+```  
  1015  ssh ubuntu@rkem1
  1016  ssh ubuntu@rkem2
  1017  ssh ubuntu@rkew1
@@ -855,14 +856,11 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 
 Last login: Fri Dec 11 20:04:05 2020 from 192.168.122.1
 ubuntu@device:~$
-ubuntu@device:~$  ` sudo docker stop $(sudo docker ps -aq) `
+```
+ubuntu@device:~$  ` sudo docker stop $(sudo docker ps -aq) ` <br/>
 
-ubuntu@device:~$  ` sudo docker rm -v $(sudo docker ps -aq) `
-ubuntu@device:~$ exit
-logout
-Connection to rkew6 closed.
-[boburciu@r220 ~]$ 
-[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
+ubuntu@device:~$  ` sudo docker rm -v $(sudo docker ps -aq) ` <br/>
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" ` 
 
   ## Check all Docker volumes on former RKE members:
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
@@ -918,4 +916,129 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 75e9e928a103        rancher/rancher     "entrypoint.sh"     8 minutes ago       Up 8 minutes        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   keen_jones
 boburciu@dns:~$  
 ```
-  ## 1. Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
+  ### Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
+
+## 1. Create RKE cluster from Rancher server
+  ### Copy the command specific for a cluster role from Rancher server:
+From the Clusters page, click Add Cluster. <br/>
+Choose Custom. <br/>
+Enter a Cluster Name. <br/>
+Skip Member Roles and Cluster Options. We’ll tell you about them later. <br/>
+Click Next. <br/>
+From Node Role, select the roles = Worker and copy the node-attachement command <br/>
+
+  ### Verify the role distribution between KVMs soon to be RKE cluster members:
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke-workers -m command -a "docker ps" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were unable to read either as JSON nor YAML, these are the errors we got from
+each: JSON: No JSON object could be decoded  Syntax Error while loading YAML.   found unexpected ':'  The error appears to be in '/etc/ansible/hosts':
+line 1, column 5, but may be elsewhere in the file depending on the exact syntax problem.  The offending line appears to be:   [VMs:children]     ^
+here
+[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin: /etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
+[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+rkew1 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkew5 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkew2 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkew3 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkew4 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkew6 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+[boburciu@r220 K8s_cluster_RKE]$
+```
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke-masters -m command -a "docker ps" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were unable to read either as JSON nor YAML, these are the errors we got from
+each: JSON: No JSON object could be decoded  Syntax Error while loading YAML.   found unexpected ':'  The error appears to be in '/etc/ansible/hosts':
+line 1, column 5, but may be elsewhere in the file depending on the exact syntax problem.  The offending line appears to be:   [VMs:children]     ^
+here
+[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin: /etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
+[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+rkem2 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+rkem1 | CHANGED | rc=0 >>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+[boburciu@r220 K8s_cluster_RKE]$
+```
+
+  ### Use Ansible to run command to all hosts to fill in the role of RKE -etcd  & --controlplane node:
+[boburciu@r220 ~]$ ` ansible ubuntu-rke-masters -m command -a "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token hxlrv482499s5khbwz8h8xm7k8ffwbmlqck8hvczqxcg555x8f8hlr --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use
+-vvvv to see details
+[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were
+unable to read either as JSON nor YAML, these are the errors we got from each:
+JSON: No JSON object could be decoded  Syntax Error while loading YAML.   found
+unexpected ':'  The error appears to be in '/etc/ansible/hosts': line 1, column
+5, but may be elsewhere in the file depending on the exact syntax problem.  The
+offending line appears to be:   [VMs:children]     ^ here
+[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin:
+/etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
+[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that
+the implicit localhost does not match 'all'
+[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather
+than running sudo
+rkem2 | CHANGED | rc=0 >>
+b85b11082b94daeb55c7348a234a245462aeb804104cdde9b11a5fcbfad9f60eUnable to find image 'rancher/rancher-agent:v2.5.5' locally
+v2.5.5: Pulling from rancher/rancher-agent
+f22ccc0b8772: Pulling fs layer
+:
+Digest: sha256:ddba352d8b1389741ed0b768b85c6fbc921889d350d7c54364c87b4d5849481b
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkem1 | CHANGED | rc=0 >>
+1a1db047ec99d17ec35591a13757116616eafed45a546921ec5fff2c47435ad7Unable to find image 'rancher/rancher-agent:v2.5.5' locally
+v2.5.5: Pulling from rancher/rancher-agent
+f22ccc0b8772: Pulling fs layer
+:
+Digest: sha256:ddba352d8b1389741ed0b768b85c6fbc921889d350d7c54364c87b4d5849481b
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+[boburciu@r220 ~]$ 
+```
+
+  ### Use Ansible to run command to all hosts to fill in the role of RKE --worker node:
+[boburciu@r220 ~]$ ` ansible ubuntu-rke-workers -m command -a "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token hxlrv482499s5khbwz8h8xm7k8ffwbmlqck8hvczqxcg555x8f8hlr --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --worker" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were unable to read either as JSON nor YAML, these are the errors we got from each: JSON: No JSON object could be decoded  Syntax Error
+while loading YAML.   found unexpected ':'  The error appears to be in '/etc/ansible/hosts': line 1, column 5, but may be elsewhere in the file depending on the exact syntax problem.  The offending line appears
+to be:   [VMs:children]     ^ here
+[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin: /etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
+[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather than running sudo
+rkew5 | CHANGED | rc=0 >>
+;
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkew1 | CHANGED | rc=0 >>
+;
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkew3 | CHANGED | rc=0 >>
+:
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkew2 | CHANGED | rc=0 >>
+:
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkew4 | CHANGED | rc=0 >>
+:
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+rkew6 | CHANGED | rc=0 >>
+:
+Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
+[boburciu@r220 ~]$ 
+```
+
+
+  
