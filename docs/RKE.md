@@ -721,8 +721,9 @@ INFO[0022] State file removed successfully
 INFO[0022] Cluster removed successfully
 [boburciu@r220 K8s_cluster_RKE]$
 ```
+## 5. Clearing out left overs of an RKE cluster (deleted with either __rke remove__ or via Rancher server UI), following [official guide](https://rancher.com/docs/rancher/v2.x/en/cluster-admin/cleaning-cluster-nodes/)
 
-  ## Check what Docker containers are still running on former RKE cluster members: 
+  ### Check what Docker containers are still running on former RKE cluster members: 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
 ```
 [WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
@@ -840,7 +841,7 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 340d32f95453        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-lftcm_ingress-nginx_99d750eb-69a1-4a38-86fe-b2b9b5eee2ed_6
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-  ## Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+  ### Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
 ```  
  1015  ssh ubuntu@rkem1
  1016  ssh ubuntu@rkem2
@@ -860,9 +861,12 @@ ubuntu@device:~$
 ubuntu@device:~$  ` sudo docker stop $(sudo docker ps -aq) ` <br/>
 
 ubuntu@device:~$  ` sudo docker rm -v $(sudo docker ps -aq) ` <br/>
+
+ubuntu@device:~$  ` for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }') /var/lib/kubelet /var/lib/rancher; do sudo umount $mount; done ` <br/>
+
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" ` 
 
-  ## Check all Docker volumes on former RKE members:
+  ### Check all Docker volumes on former RKE members:
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
 ```
 [WARNING]: I..
@@ -885,10 +889,49 @@ rkew5 | CHANGED | rc=0 >>
 [boburciu@r220 K8s_cluster_RKE]$
 ```
 
+  ### Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
+[boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo rm -rf /etc/ceph \
+      /etc/cni \
+      /etc/kubernetes \
+      /opt/cni \
+      /opt/rke \
+      /run/secrets/kubernetes.io \
+      /run/calico \
+      /run/flannel \
+      /var/lib/calico \
+      /var/lib/etcd \
+      /var/lib/cni \
+      /var/lib/kubelet \
+      /var/lib/rancher/rke/log \
+      /var/log/containers \
+      /var/log/kube-audit \
+      /var/log/pods \
+      /var/run/calico " `
+```      
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather than running sudo
+rkem2 | CHANGED | rc=0 >>
+
+rkew2 | CHANGED | rc=0 >>
+
+rkem1 | CHANGED | rc=0 >>
+
+rkew1 | CHANGED | rc=0 >>
+
+rkew3 | CHANGED | rc=0 >>
+
+rkew4 | CHANGED | rc=0 >>
+
+rkew5 | CHANGED | rc=0 >>
+
+rkew6 | CHANGED | rc=0 >>
+
+[boburciu@r220 Rancher_K8s_prereq]$
+```
+
 # Managing automatic RKE Kubernetes cluster creation via Rancher server
 
 ## 0. Intall Rancher Server as container on VM:
-
 ubuntu@device:~$ ` ssh boburciu@DNSServer `
 ```
 boburciu@dnsserver's password: password
@@ -918,7 +961,14 @@ boburciu@dns:~$
 ```
   ### Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
 
-## 1. Create RKE cluster from Rancher server
+
+## 1. Apply prerequisites for nodes:
+[boburciu@r220 ~]$ <br/>
+[boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
+[boburciu@r220 Rancher_K8s_prereq]$
+[boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_prereq_setup.yml -v `
+
+## 2. Create RKE cluster from Rancher server
   ### Copy the command specific for a cluster role from Rancher server:
 From the Clusters page, click Add Cluster. <br/>
 Choose Custom. <br/>
@@ -970,6 +1020,9 @@ rkem1 | CHANGED | rc=0 >>
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
 [boburciu@r220 K8s_cluster_RKE]$
 ```
+
+  ### Rancher cluster will fail with error _Cluster health check failed: cluster agent is not ready_ if there is no worker node added prior to control plane + etch node addition, per [Rancher issue](https://github.com/rancher/rancher/issues/29715), so we need to add the first node with all 3 roles:
+
 
   ### Use Ansible to run command to all hosts to fill in the role of RKE -etcd  & --controlplane node:
 [boburciu@r220 ~]$ ` ansible ubuntu-rke-masters -m command -a "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token hxlrv482499s5khbwz8h8xm7k8ffwbmlqck8hvczqxcg555x8f8hlr --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane" `
