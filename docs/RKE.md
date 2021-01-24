@@ -151,7 +151,7 @@ rkew4  ansible_user=root
  ### - First satisfy prerequisites for RKE on the KVMs:
 [boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
-[boburciu@r220 Rancher_K8s_prereq]$
+[boburciu@r220 Rancher_K8s_prereq]$ <br/>
 [boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_prereq_setup.yml -v `
 ```
 :
@@ -721,9 +721,52 @@ INFO[0022] State file removed successfully
 INFO[0022] Cluster removed successfully
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-## 5. Clearing out left overs of an RKE cluster (deleted with either __rke remove__ or via Rancher server UI), following [official guide](https://rancher.com/docs/rancher/v2.x/en/cluster-admin/cleaning-cluster-nodes/)
+## 5. Clearing out leftovers of an RKE cluster (deleted with either __rke remove__ or via Rancher server UI), following [official guide](https://rancher.com/docs/rancher/v2.x/en/cluster-admin/cleaning-cluster-nodes/)
 
-  ### Check what Docker containers are still running on former RKE cluster members: 
+[boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_leftovers_remove.yml -v `
+```
+PLAY RECAP *******************************************************************************************************************
+rkem1                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=5
+rkem2                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=5
+rkew1                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+rkew2                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+rkew3                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+rkew4                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+rkew5                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+rkew6                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=2
+
+[boburciu@r220 Rancher_K8s_prereq]$
+[boburciu@r220 Rancher_K8s_prereq]$ cat Rancher_leftovers_remove.yml
+---
+- name: Clear leftover containers and dirs after an RKE cluster delete (with either __rke remove__ or via Rancher server UI)
+    # per https://rancher.com/docs/rancher/v2.x/en/cluster-admin/cleaning-cluster-nodes/
+  hosts: ubuntu-rke
+  tasks:
+    - name: stop all docker containers
+      shell: docker stop $(docker ps -a -q)
+      ignore_errors: true
+    - name: remove all docker containers
+      shell: docker rm -v $(docker ps -a -q)
+      ignore_errors: true
+    - name: remove all docker volumes
+      shell: docker volume rm $(docker volume ls -q)
+      ignore_errors: true
+    - name: remove all docker images
+      shell: docker rmi $(docker images -q)
+      ignore_errors: true
+
+    - name: clean Kubernetes components and secrets mounts
+      shell: for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }') /var/lib/kubelet /var/lib/rancher; do sudo umount $mount; done
+      ignore_errors: true
+
+    - name: clean directories
+      shell: sudo rm -rf /etc/ceph \ /etc/cni \ /etc/kubernetes \ /opt/cni \ /opt/rke \ /run/secrets/kubernetes.io \ /run/calico \ /run/flannel \ /var/lib/calico \ /var/lib/etcd \ /var/lib/cni \ /var/lib/kubelet \ /var/lib/rancher/rke/log \ /var/log/containers \ /var/log/kube-audit \ /var/log/pods \ /var/run/calico
+      ignore_errors: true
+
+[boburciu@r220 Rancher_K8s_prereq]$
+```
+  ### The above playbook takes care of:  
+  #### Check what Docker containers are still running on former RKE cluster members: 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
 ```
 [WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
@@ -841,7 +884,7 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 340d32f95453        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-lftcm_ingress-nginx_99d750eb-69a1-4a38-86fe-b2b9b5eee2ed_6
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-  ### Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+  #### Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
 ```  
  1015  ssh ubuntu@rkem1
  1016  ssh ubuntu@rkem2
@@ -866,7 +909,7 @@ ubuntu@device:~$  ` for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' 
 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" ` 
 
-  ### Check all Docker volumes on former RKE members:
+  #### Check all Docker volumes on former RKE members:
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
 ```
 [WARNING]: I..
@@ -889,7 +932,7 @@ rkew5 | CHANGED | rc=0 >>
 [boburciu@r220 K8s_cluster_RKE]$
 ```
 
-  ### Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
+  #### Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo rm -rf /etc/ceph \
       /etc/cni \
       /etc/kubernetes \
@@ -961,12 +1004,36 @@ boburciu@dns:~$
 ```
   ### Connect to https://192.168.122.64 or https://RancherServer.boburciu.privatecloud.com, from inside KVM network (not from Win), with user _admin_ & pass _password_
 
-
 ## 1. Apply prerequisites for nodes:
 [boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
-[boburciu@r220 Rancher_K8s_prereq]$
+[boburciu@r220 Rancher_K8s_prereq]$ <br/>
 [boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_prereq_setup.yml -v `
+```
+PLAY [Set DNS server for resolving the Rancher server URL, 8th] **************************************************************
+
+TASK [Gathering Facts] *******************************************************************************************************
+ok: [test]
+
+TASK [Set DNS server and search domain in /etc/netplan/01-netcfg.yaml] *******************************************************
+ok: [test] => {"changed": false, "msg": ""}
+
+TASK [Run "sudo netplan apply"] **********************************************************************************************
+changed: [test] => {"changed": true, "cmd": ["sudo", "netplan", "apply"], "delta": "0:00:00.169147", "end": "2021-01-24 15:55:37.467471", "rc": 0, "start": "2021-01-24 15:55:37.298324", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *******************************************************************************************************************
+rkem1                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkem2                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew1                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew2                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew3                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew4                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew5                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+rkew6                      : ok=26   changed=6    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+test                       : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+[boburciu@r220 Rancher_K8s_prereq]$
+```
 
 ## 2. Create RKE cluster from Rancher server
   ### Copy the command specific for a cluster role from Rancher server:
@@ -1022,76 +1089,21 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 ```
 
   ### Rancher cluster will fail with error _Cluster health check failed: cluster agent is not ready_ if there is no worker node added prior to control plane + etch node addition, per [Rancher issue](https://github.com/rancher/rancher/issues/29715), so we need to add the first node with all 3 roles:
+[boburciu@r220 ~]$ ` ssh ubuntu@rkem1 "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token zkqvtg8wp9gc8vwx5czw88n9hxr2h8zk47w6wk4sx6dzhrp8nbnxvv --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane --worker" `
 
+  ### Wait for cluster to become Active
 
-  ### Use Ansible to run command to all hosts to fill in the role of RKE -etcd  & --controlplane node:
-[boburciu@r220 ~]$ ` ansible ubuntu-rke-masters -m command -a "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token hxlrv482499s5khbwz8h8xm7k8ffwbmlqck8hvczqxcg555x8f8hlr --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane" `
+  ### Note that a different hostname needs to be passed for different nodes to be attached, otherwise the current one (already added, rkem1) will get its role modified
+
+  ### Then use a loop to run command to all hosts to fill in the role of RKE --worker node:
+[boburciu@r220 ~]$ ` for i in rkew1 rkew2 rkew3 rkew4 rkew5 rkew6; do ssh ubuntu@$i "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token zkqvtg8wp9gc8vwx5czw88n9hxr2h8zk47w6wk4sx6dzhrp8nbnxvv --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --node-name $i --worker"; done `
 ```
-[WARNING]: Invalid characters were found in group names but not replaced, use
--vvvv to see details
-[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were
-unable to read either as JSON nor YAML, these are the errors we got from each:
-JSON: No JSON object could be decoded  Syntax Error while loading YAML.   found
-unexpected ':'  The error appears to be in '/etc/ansible/hosts': line 1, column
-5, but may be elsewhere in the file depending on the exact syntax problem.  The
-offending line appears to be:   [VMs:children]     ^ here
-[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin:
-/etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
-[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
-[WARNING]: No inventory was parsed, only implicit localhost is available
-[WARNING]: provided hosts list is empty, only localhost is available. Note that
-the implicit localhost does not match 'all'
-[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather
-than running sudo
-rkem2 | CHANGED | rc=0 >>
-b85b11082b94daeb55c7348a234a245462aeb804104cdde9b11a5fcbfad9f60eUnable to find image 'rancher/rancher-agent:v2.5.5' locally
-v2.5.5: Pulling from rancher/rancher-agent
-f22ccc0b8772: Pulling fs layer
-:
-Digest: sha256:ddba352d8b1389741ed0b768b85c6fbc921889d350d7c54364c87b4d5849481b
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkem1 | CHANGED | rc=0 >>
-1a1db047ec99d17ec35591a13757116616eafed45a546921ec5fff2c47435ad7Unable to find image 'rancher/rancher-agent:v2.5.5' locally
-v2.5.5: Pulling from rancher/rancher-agent
-f22ccc0b8772: Pulling fs layer
-:
-Digest: sha256:ddba352d8b1389741ed0b768b85c6fbc921889d350d7c54364c87b4d5849481b
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-[boburciu@r220 ~]$ 
+b26f054c9107975d351293fa52155396fe973dc52a48ac9b11c9a181c650cb91
+b2ae34c165712e47d18f5e2710fbcee95ad46d4f5fd22b1160af2096ce22c1f0
+43ef32b04242f4e141df2b2662c55053baadaa58c4ed616205537bbd195802f2
+9ded2a7ad77cbdae85ea6588562528aab20474b0f598f21f35d78185ae306977
+0f20f5b7018bd21c9d8fe2ef3b95c70e7055bde0db1269011405695cd091c9d1
+[boburciu@r220 ~]$
 ```
-
-  ### Use Ansible to run command to all hosts to fill in the role of RKE --worker node:
-[boburciu@r220 ~]$ ` ansible ubuntu-rke-workers -m command -a "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token hxlrv482499s5khbwz8h8xm7k8ffwbmlqck8hvczqxcg555x8f8hlr --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --worker" `
-```
-[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
-[WARNING]:  * Failed to parse /etc/ansible/hosts with yaml plugin: We were unable to read either as JSON nor YAML, these are the errors we got from each: JSON: No JSON object could be decoded  Syntax Error
-while loading YAML.   found unexpected ':'  The error appears to be in '/etc/ansible/hosts': line 1, column 5, but may be elsewhere in the file depending on the exact syntax problem.  The offending line appears
-to be:   [VMs:children]     ^ here
-[WARNING]:  * Failed to parse /etc/ansible/hosts with ini plugin: /etc/ansible/hosts:2: Section [VMs:children] includes undefined group: rancheos
-[WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
-[WARNING]: No inventory was parsed, only implicit localhost is available
-[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
-[WARNING]: Consider using 'become', 'become_method', and 'become_user' rather than running sudo
-rkew5 | CHANGED | rc=0 >>
-;
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkew1 | CHANGED | rc=0 >>
-;
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkew3 | CHANGED | rc=0 >>
-:
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkew2 | CHANGED | rc=0 >>
-:
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkew4 | CHANGED | rc=0 >>
-:
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-rkew6 | CHANGED | rc=0 >>
-:
-Status: Downloaded newer image for rancher/rancher-agent:v2.5.5
-[boburciu@r220 ~]$ 
-```
-
-
-  
+  ### Last, add another control plane and etcd node:
+[boburciu@r220 ~]$ ` ssh ubuntu@rkem2 "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token zkqvtg8wp9gc8vwx5czw88n9hxr2h8zk47w6wk4sx6dzhrp8nbnxvv --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 rkem2 --etcd --controlplane" `
