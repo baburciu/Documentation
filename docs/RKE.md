@@ -1,5 +1,5 @@
 # Managing manual RKE Kubernetes cluster creation
- ++++
+ 
 ## 0. Setup RKE:
 
  ### - Considering [official RKE installation guide](https://rancher.com/docs/rke/latest/en/installation/) and downloading from [GitHub RKE release v1.2.3 with K8s v1.19 support](https://github.com/rancher/rke/releases/tag/v1.2.3) we followed [automation guidelines](https://computingforgeeks.com/install-kubernetes-production-cluster-using-rancher-rke/)
@@ -906,7 +906,7 @@ rkew6 | CHANGED | rc=0 >>
 ```
 
 # Managing automatic RKE Kubernetes cluster creation via Rancher server
-++++
+
 ## 0. Intall Rancher Server as container on VM:
 ubuntu@device:~$ ` ssh boburciu@DNSServer `
 ```
@@ -1025,6 +1025,7 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 [boburciu@r220 ~]$ ` ssh ubuntu@rkem1 "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token zkqvtg8wp9gc8vwx5czw88n9hxr2h8zk47w6wk4sx6dzhrp8nbnxvv --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane --worker" `
 
   ### Wait for cluster to become Active
+![Rancher cluster state](../images/Rancher_cluster_state.png)
 
   ### Note that a different hostname needs to be passed for different nodes to be attached, otherwise the current one (already added, rkem1) will get its role modified
 
