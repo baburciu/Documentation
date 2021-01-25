@@ -1,2 +1,2 @@
 # Documentation
-Doc kept in Markdown language for the local server automation and bare-metal VM creation.
+Doc kept in Markdown language for the local bare-metal server automation and KVM creation, Rancher cluster for Kubernetes and other.
