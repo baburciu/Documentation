@@ -2,9 +2,9 @@
  
 ## 0. Setup RKE:
 
- ### - Considering [official RKE installation guide](https://rancher.com/docs/rke/latest/en/installation/) and downloading from [GitHub RKE release v1.2.3 with K8s v1.19 support](https://github.com/rancher/rke/releases/tag/v1.2.3) we followed [automation guidelines](https://computingforgeeks.com/install-kubernetes-production-cluster-using-rancher-rke/)
+ ### * Considering [official RKE installation guide](https://rancher.com/docs/rke/latest/en/installation/) and downloading from [GitHub RKE release v1.2.3 with K8s v1.19 support](https://github.com/rancher/rke/releases/tag/v1.2.3) we followed [automation guidelines](https://computingforgeeks.com/install-kubernetes-production-cluster-using-rancher-rke/)
 
- ### - download the RKE binary to a folder in your $PATH, like */usr/local/bin*, and rename it *rke*. Then verify supported versions (including v1.19 for CKAD as of Dec 2020)) <br/>
+ ### * download the RKE binary to a folder in your $PATH, like */usr/local/bin*, and rename it *rke*. Then verify supported versions (including v1.19 for CKAD as of Dec 2020)) <br/>
 `sudo wget https://github.com/rancher/rke/releases/download/v1.2.3/rke_linux-amd64 --directory-prefix=/usr/local/bin` <br/>
 `sudo mv /usr/local/bin/rke_linux-amd64 /usr/local/bin/rke` <br/>
 `sudo chmod +x /usr/local/bin/rke` <br/>
@@ -26,7 +26,7 @@ Saving to: ‘/usr/local/bin/rke_linux-amd64’
 
 100%[==================================================================================>] 38,811,818  15.2MB/s   in 2.4s
 
-2020-12-03 13:21:21 (15.2 MB/s) - ‘/usr/local/bin/rke_linux-amd64’ saved [38811818/38811818]
+2020-12-03 13:21:21 (15.2 MB/s) * ‘/usr/local/bin/rke_linux-amd64’ saved [38811818/38811818]
 
 [boburciu@r220 KVM-notes-proj]$ 
 [boburciu@r220 KVM-notes-proj]$ ls -lt  /usr/local/bin
@@ -86,7 +86,7 @@ v1.19.4-rancher1-1
 
 ## 1. Create the K8s cluster by Rancher K8s Engine (RKE):
 
- ### - We have the KVMs to form the K8s cluster created and added in Ansible /etc/ansible/hosts:
+ ### * We have the KVMs to form the K8s cluster created and added in Ansible /etc/ansible/hosts:
 
 [boburciu@r220 ~]$ ` nslookup rkem1; nslookup rkem2; nslookup rkew1; nslookup rkew2; nslookup rkew3; nslookup rkew4; `
 ```
@@ -148,7 +148,7 @@ rkew4  ansible_user=root
 [boburciu@r220 ~]$
 ```
 
- ### - First satisfy prerequisites for RKE on the KVMs:
+ ### * First satisfy prerequisites for RKE on the KVMs:
 [boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
 [boburciu@r220 Rancher_K8s_prereq]$ <br/>
@@ -167,8 +167,8 @@ rkew4                      : ok=27   changed=17   unreachable=0    failed=0    s
 [boburciu@r220 Rancher_K8s_prereq]$
 ```
 
- ### - Create the RKE config to be used for K8s cluster install, which has these [Kubernetes install options](https://rancher.com/docs/rke/latest/en/config-options/)
- #### - 1. running ` rke config ` in a dir will create the cluster.yml file.
+ ### * Create the RKE config to be used for K8s cluster install, which has these [Kubernetes install options](https://rancher.com/docs/rke/latest/en/config-options/)
+ #### * 1. running ` rke config ` in a dir will create the cluster.yml file.
 [boburciu@r220 ~]$
 [boburciu@r220 ~]$ ` rke config `
 ```
@@ -241,7 +241,7 @@ rkew4                      : ok=27   changed=17   unreachable=0    failed=0    s
 [boburciu@r220 ~]$
 ```
 
- #### - 2. cluster.yml got created
+ #### * 2. cluster.yml got created
 ```  
 [boburciu@r220 ~]$ date
 Sat Dec  5 23:33:27 EET 2020
@@ -279,7 +279,7 @@ kubernetes_version: ""
   kubernetes: rancher/hyperkube:v1.19.4-rancher1
 [boburciu@r220 K8s_cluster_RKE]$
 ```
- ### - Run ` rke up ` in the dir with cluster.yml
+ ### * Run ` rke up ` in the dir with cluster.yml
 ```
 [boburciu@r220 K8s_cluster_RKE]$
 [boburciu@r220 K8s_cluster_RKE]$ rke up
@@ -314,12 +314,12 @@ WARN[0018] Failed to create Docker container [rke-etcd-port-listener] on host [r
 FATA[0018] [Failed to create [rke-etcd-port-listener] container on host [rkem2]: Failed to create Docker container [rke-etcd-port-listener] on host [rkem2]: Error response from daemon: No such image: rancher/rke-tools:v0.1.66]
 [boburciu@r220 K8s_cluster_RKE]$
 ``` 
- #### - In case error _Failed to create Docker container [rke-etcd-port-listener] on host_ is returned you need to restart Docker service on KVMs:
+ #### * In case error _Failed to create Docker container [rke-etcd-port-listener] on host_ is returned you need to restart Docker service on KVMs:
 [boburciu@r220 Rancher_K8s_prereq]$ ` ansible ubuntu-rke -m command -a "sudo service docker restart" `
- #### - To verify Docker restart was done:
+ #### * To verify Docker restart was done:
 [boburciu@r220 Rancher_K8s_prereq]$ ` ansible ubuntu-rke -m command -a "systemctl status docker.service" ` 
 
- #### - RKE runs succesfully if ended with:
+ #### * RKE runs succesfully if ended with:
 ``` 
 INFO[0217] [remove/rke-log-cleaner] Successfully removed container on host [rkew3]
 INFO[0217] [remove/rke-log-cleaner] Successfully removed container on host [rkew4]
@@ -357,8 +357,8 @@ INFO[0253] Finished building Kubernetes cluster successfully
 
 ## 2. Manage RKE K8s cluster
 
- ### - I. You need the _kubectl_ command line tool to manage the RKE cluster:
- #### - Download the latest release, make the kubectl binary executable and move it in a dir to your path in to your PATH::
+ ### * I. You need the _kubectl_ command line tool to manage the RKE cluster:
+ #### * Download the latest release, make the kubectl binary executable and move it in a dir to your path in to your PATH::
 ` curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl" ` <br/>
 ` chmod +x ./kubectl ` <br/>
 ` sudo mv ./kubectl /usr/local/bin/kubectl ` <br/>
@@ -377,7 +377,7 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCom
 [boburciu@r220 K8s_cluster_RKE]$
 ``` 
 
- #### - Or to have *kubectl* on the RKE master node 1, SSH to it and install
+ #### * Or to have *kubectl* on the RKE master node 1, SSH to it and install
 [boburciu@r220 OpenStackHelm_prereq]$ ` ssh ubuntu@rkem1 `
 ``` 
 Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
@@ -406,7 +406,7 @@ Client Version: version.Info{Major:"1", Minor:"19", GitVersion:"v1.19.4", GitCom
 ubuntu@device:~$
 ``` 
 
- #### - then create ~/.kube/ dir, the default location for KUBECONFIG
+ #### * then create ~/.kube/ dir, the default location for KUBECONFIG
 
 ubuntu@device:~$ ` mkdir ~/.kube `
 ``` 
@@ -424,7 +424,7 @@ Change: 2020-12-07 20:49:37.654408911 +0000
 ubuntu@device:~$
 ``` 
 
- ### - II. RKE K8s cluster install has created _kube_config_cluster.yml_ in the dir where cluster.yml was called, which can be use to connect the _kubectl_ utility with the cluster:
+ ### * II. RKE K8s cluster install has created _kube_config_cluster.yml_ in the dir where cluster.yml was called, which can be use to connect the _kubectl_ utility with the cluster:
 ```
 [boburciu@r220 K8s_cluster_RKE]$
 [boburciu@r220 K8s_cluster_RKE]$ pwd
@@ -472,7 +472,7 @@ rkew4   Ready    worker              36m   v1.19.4
 [boburciu@r220 K8s_cluster_RKE]$
 ```
 
- #### - Or to have *kubectl* on the RKE master node 1, transfer */home/boburciu/K8s_cluster_RKE/kube_config_cluster.yml* to **rkem1** as ~/.kube/config
+ #### * Or to have *kubectl* on the RKE master node 1, transfer */home/boburciu/K8s_cluster_RKE/kube_config_cluster.yml* to **rkem1** as ~/.kube/config
 [boburciu@r220 K8s_cluster_RKE]$ ` scp -3 -r ./kube_config_cluster.yml ubuntu@rkem1:~/.kube/config `
 ```
 kube_config_cluster.yml                                                                     100% 5376    11.5MB/s   00:00
@@ -502,14 +502,14 @@ ubuntu@device:~$
 
 ## 3. Adding RKE K8s cluster nodes:
 
- ### - I. First create the new KVMs to serve as K8s nodes:
-  #### - - RKE Worker Node 5. 
+ ### * I. First create the new KVMs to serve as K8s nodes:
+  #### * - RKE Worker Node 5. 
 ` sudo virt-install --name=rkew5 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew5.qcow2,size=20 ` 
 
-  #### - - RKE Worker Node 6. 
+  #### * - RKE Worker Node 6. 
 ` sudo virt-install --name=rkew6 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew6.qcow2,size=20 ` 
 
- ### - II. Add the new KVM nodes under _/etc/ansible/hosts_ to run RKE prerequisites Ansible playbook
+ ### * II. Add the new KVM nodes under _/etc/ansible/hosts_ to run RKE prerequisites Ansible playbook
 [boburciu@r220 ~]$ ` head -22 /etc/ansible/hosts `
 ```
 [VMs:children]
@@ -536,7 +536,7 @@ rkew5  ansible_user=root
 rkew6  ansible_user=root
 [boburciu@r220 ~]$
 ```
- ### - III. Run RKE prereq playbook for _rkew5_ & _rkew6_
+ ### * III. Run RKE prereq playbook for _rkew5_ & _rkew6_
 [boburciu@r220 ~]$ <br/>
 [boburciu@r220 ~]$ ` cd /home/boburciu/Rancher_K8s_prereq ` <br/>
 [boburciu@r220 Rancher_K8s_prereq]$
@@ -555,14 +555,14 @@ rkew6                      : ok=27   changed=17   unreachable=0    failed=0    s
 [boburciu@r220 Rancher_K8s_prereq]$
 ```
 
- ### - IV. Considering [official RKE guide](https://rancher.com/docs/rke/latest/en/managing-clusters/)
- #### - update the original */home/boburciu/K8s_cluster_RKE/cluster.yml* file with any additional nodes and specify their role in the Kubernetes cluster. 
+ ### * IV. Considering [official RKE guide](https://rancher.com/docs/rke/latest/en/managing-clusters/)
+ #### * update the original */home/boburciu/K8s_cluster_RKE/cluster.yml* file with any additional nodes and specify their role in the Kubernetes cluster. 
 ```
- - address: rkew5
+ * address: rkew5
   port: "22"
   internal_address: 192.168.122.141
   role:
-  - worker
+  * worker
   hostname_override: rkew5
   user: ubuntu
   docker_socket: /var/run/docker.sock
@@ -572,11 +572,11 @@ rkew6                      : ok=27   changed=17   unreachable=0    failed=0    s
   ssh_cert_path: ""
   labels: {}
   taints: []
- - address: rkew6
+ * address: rkew6
   port: "22"
   internal_address: 192.168.122.88
   role:
-  - worker
+  * worker
   hostname_override: rkew6
   user: ubuntu
   docker_socket: /var/run/docker.sock
@@ -597,7 +597,7 @@ rkew6                      : ok=27   changed=17   unreachable=0    failed=0    s
   port: "22"
   internal_address: 192.168.122.141
   role:
-  - worker
+  * worker
   hostname_override: rkew5
   user: ubuntu
   docker_socket: /var/run/docker.sock
@@ -611,7 +611,7 @@ rkew6                      : ok=27   changed=17   unreachable=0    failed=0    s
   port: "22"
   internal_address: 192.168.122.88
   role:
-  - worker
+  * worker
   hostname_override: rkew6
   user: ubuntu
   docker_socket: /var/run/docker.sock
@@ -624,7 +624,7 @@ rkew6                      : ok=27   changed=17   unreachable=0    failed=0    s
 services:
 ```
 
- #### - Run ` rke up --update-only ` and this will ignore everything else in the *cluster.yml* except for any worker nodes
+ #### * Run ` rke up --update-only ` and this will ignore everything else in the *cluster.yml* except for any worker nodes
 [boburciu@r220 ~]$ ` cd ~/K8s_cluster_RKE/ ` <br/>
 [boburciu@r220 K8s_cluster_RKE]$ <br/>
 [boburciu@r220 K8s_cluster_RKE]$ ` rke up --update-only `
@@ -742,24 +742,24 @@ rkew6                      : ok=7    changed=6    unreachable=0    failed=0    s
     # per https://rancher.com/docs/rancher/v2.x/en/cluster-admin/cleaning-cluster-nodes/
   hosts: ubuntu-rke
   tasks:
-    - name: stop all docker containers
+    * name: stop all docker containers
       shell: docker stop $(docker ps -a -q)
       ignore_errors: true
-    - name: remove all docker containers
+    * name: remove all docker containers
       shell: docker rm -v $(docker ps -a -q)
       ignore_errors: true
-    - name: remove all docker volumes
+    * name: remove all docker volumes
       shell: docker volume rm $(docker volume ls -q)
       ignore_errors: true
-    - name: remove all docker images
+    * name: remove all docker images
       shell: docker rmi $(docker images -q)
       ignore_errors: true
 
-    - name: clean Kubernetes components and secrets mounts
+    * name: clean Kubernetes components and secrets mounts
       shell: for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }') /var/lib/kubelet /var/lib/rancher; do sudo umount $mount; done
       ignore_errors: true
 
-    - name: clean directories
+    * name: clean directories
       shell: sudo rm -rf /etc/ceph \ /etc/cni \ /etc/kubernetes \ /opt/cni \ /opt/rke \ /run/secrets/kubernetes.io \ /run/calico \ /run/flannel \ /var/lib/calico \ /var/lib/etcd \ /var/lib/cni \ /var/lib/kubelet \ /var/lib/rancher/rke/log \ /var/log/containers \ /var/log/kube-audit \ /var/log/pods \ /var/run/calico
       ignore_errors: true
 
@@ -770,7 +770,7 @@ rkew6                      : ok=7    changed=6    unreachable=0    failed=0    s
 
 
   ### The above playbook takes care of:  
-  #### - Check what Docker containers are still running on former RKE cluster members: 
+  #### * Check what Docker containers are still running on former RKE cluster members: 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
 ```[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
 [WARNING]: Consider using 'become', 'become_method', and 'become_user' rather than running sudo
@@ -817,7 +817,7 @@ CONTAINER ID        IMAGE                                COMMAND                
 0f8d2cefb9b7        rancher/hyperkube:v1.19.6-rancher1   "/opt/rke-tools/entr…"   20 hours ago        Up 35 minutes                           kube-proxy
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-  #### - Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+  #### * Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
 ```  
  1015  ssh ubuntu@rkem1
  1016  ssh ubuntu@rkem2
@@ -842,7 +842,7 @@ ubuntu@device:~$  ` for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' 
 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" ` 
 
-  #### - Check all Docker volumes on former RKE members:
+  #### * Check all Docker volumes on former RKE members:
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
 ```
 [WARNING]: I..
@@ -865,7 +865,7 @@ rkew5 | CHANGED | rc=0 >>
 [boburciu@r220 K8s_cluster_RKE]$
 ```
 
-  #### - Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
+  #### * Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo rm -rf /etc/ceph \
       /etc/cni \
       /etc/kubernetes \
