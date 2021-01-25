@@ -1025,7 +1025,7 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 [boburciu@r220 ~]$ ` ssh ubuntu@rkem1 "sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.5.5 --server https://RancherServer.boburciu.privatecloud.com --token zkqvtg8wp9gc8vwx5czw88n9hxr2h8zk47w6wk4sx6dzhrp8nbnxvv --ca-checksum d7f16d4b95d23022ad944d9670e7c83bf0d8971fa4212c0824cf9e906250fd23 --etcd --controlplane --worker" `
 
   ### Wait for cluster to become Active
-![Rancher cluster state](../images/Rancher_cluster_state.png)
+![Rancher cluster state](./images/Rancher_cluster_state.png)
 
   ### Note that a different hostname needs to be passed for different nodes to be attached, otherwise the current one (already added, rkem1) will get its role modified
 
