@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../../../Rancher_K8s_prereq"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}
