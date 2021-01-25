@@ -503,10 +503,10 @@ ubuntu@device:~$
 ## 3. Adding RKE K8s cluster nodes:
 
  ### - I. First create the new KVMs to serve as K8s nodes:
-  #### - RKE Worker Node 5. 
+  #### <o> - RKE Worker Node 5. 
 ` sudo virt-install --name=rkew5 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew5.qcow2,size=20 ` 
 
-  #### - RKE Worker Node 6. 
+  #### <o> - RKE Worker Node 6. 
 ` sudo virt-install --name=rkew6 --ram=4096 --vcpus=4 --cdrom=/home/boburciu/Desktop/ISOs/ubuntu-18.04-netboot-amd64-unattended.iso --os-type=linux --os-variant=ubuntu18.04 --network default --disk path=/BM_VMs/rkew6.qcow2,size=20 ` 
 
  ### - II. Add the new KVM nodes under _/etc/ansible/hosts_ to run RKE prerequisites Ansible playbook
@@ -765,8 +765,12 @@ rkew6                      : ok=7    changed=6    unreachable=0    failed=0    s
 
 [boburciu@r220 Rancher_K8s_prereq]$
 ```
+  ### To remove leftovers to one specific node (a drained one from Rancher server UI):
+[boburciu@r220 Rancher_K8s_prereq]$ ` ansible-playbook Rancher_leftovers_remove.yml -v -i /etc/ansible/hosts --limit rkem2 `
+
+
   ### The above playbook takes care of:  
-  #### Check what Docker containers are still running on former RKE cluster members: 
+  #### <o> Check what Docker containers are still running on former RKE cluster members: 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" `
 ```
 [WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
@@ -884,7 +888,7 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 340d32f95453        rancher/pause:3.2   "/pause"                 8 hours ago         Up 8 hours                              k8s_POD_nginx-ingress-controller-lftcm_ingress-nginx_99d750eb-69a1-4a38-86fe-b2b9b5eee2ed_6
 [boburciu@r220 K8s_cluster_RKE]$
 ```
-  #### Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
+  #### <o> Then SSH to each former RKE member and stop active containers and then remove all containers, then check if nothing remained:
 ```  
  1015  ssh ubuntu@rkem1
  1016  ssh ubuntu@rkem2
@@ -909,7 +913,7 @@ ubuntu@device:~$  ` for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' 
 
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo docker ps" ` 
 
-  #### Check all Docker volumes on former RKE members:
+  #### <o> Check all Docker volumes on former RKE members:
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "docker volume ls -q" `
 ```
 [WARNING]: I..
@@ -932,7 +936,7 @@ rkew5 | CHANGED | rc=0 >>
 [boburciu@r220 K8s_cluster_RKE]$
 ```
 
-  #### Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
+  #### <o> Remove the used directories (important for removing certificates used initially, as those will create problem at new RKE install on same node):
 [boburciu@r220 K8s_cluster_RKE]$ ` ansible ubuntu-rke -m command -a "sudo rm -rf /etc/ceph \
       /etc/cni \
       /etc/kubernetes \
