@@ -551,11 +551,14 @@ rkew1 | SUCCESS => {
     78  kube_pods_subnet: 10.0.0.0/18
 [boburciu@r220 kubespray]$
 ``` 
-``` 
-[boburciu@r220 kubespray]$ cat -n inventory/sample/group_vars/k8s-cluster/addons.yml | grep helm
+[boburciu@r220 kubespray]$ ` cat -n inventory/sample/group_vars/k8s-cluster/addons.yml | grep helm `
+```
      7  helm_enabled: false
 [boburciu@r220 kubespray]$
-[boburciu@r220 kubespray]$ cat -n inventory/sample/group_vars/k8s-cluster/addons.yml | grep nginx                          87  ingress_nginx_enabled: false
+```
+[boburciu@r220 kubespray]$ ` cat -n inventory/sample/group_vars/k8s-cluster/addons.yml | grep nginx `
+```
+    87  ingress_nginx_enabled: false
     88  # ingress_nginx_host_network: false
     90  # ingress_nginx_nodeselector:
     92  # ingress_nginx_tolerations:
