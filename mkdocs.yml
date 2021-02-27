@@ -5,4 +5,5 @@ nav:
     - How to create & use BIND DNS server: DNS_server.md    
     - How to create & install KVM: KVM_usage.md
     - How to install & use RKE: RKE.md            
+    - How to install K8s cluster by Kubespray: K8s_Kubespray.md    
 theme: readthedocs    
