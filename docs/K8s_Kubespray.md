@@ -641,7 +641,7 @@ ubuntu@rkem1:~$
 ![Rancher imported cluster](./images/Rancher_imported.png)
 ![Rancher imported cluster alers](./images/Rancher_imported_alert.png)
 
- ### - Solve Schedule and Controller-Manager errors:
+ ### - Solve Scheduler and Controller-Manager errors:
 ubuntu@rkem1:~$ ` kubectl get componentstatus `
 ```
 Warning: v1 ComponentStatus is deprecated in v1.19+
