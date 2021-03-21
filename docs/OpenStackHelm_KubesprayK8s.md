@@ -1,0 +1,1681 @@
+# Managing OpenStacK as Helm
+ 
+## Prepare OSH deployment:
+
+ ### - I. The K8s cluster for OSH has requirements like:
+
+ #### - 1. No ingress controller needs to be installed, the OSH code will install one (by script _/opt/openstack-helm/./tools/deployment/component/common/ingress.sh_), otherwise the pod named __ingress-__ created by a DaemonSet/ingress for each worker with Node-Selector: openstack-control-plane=enabled, (requesting Ports: 80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP on the worker nodes) will be unable to be created:
+```
+ubuntu@rkem1:~$ kubectl get pod -o wide -n kube-system | grep ingress
+NAME                                       READY   STATUS    RESTARTS   AGE   IP                NODE     NOMINATED NODE   READINESS GATES
+ingress-9snxr                              0/1     Pending   0          21m   <none>            <none>   <none>           <none>
+ingress-error-pages-75c98d5448-7t42d       1/1     Running   0          21m   10.0.5.7          rkew1    <none>           <none>
+ingress-error-pages-75c98d5448-r5rh4       1/1     Running   0          21m   10.0.5.6          rkew1    <none>           <none>
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ kubectl describe pod ingress-9snxr -n kube-system 
+Name:           ingress-9snxr
+Namespace:      kube-system
+:
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age    From               Message
+  ----     ------            ----   ----               -------
+  Warning  FailedScheduling  9m39s  default-scheduler  0/6 nodes are available: 1 node(s) didn't have free ports for the requested pod ports, 2 node(s) had taint {node-role.kubernetes.io/master: }, that the pod didn't tolerate, 3 node(s) didn't match Pod's node affinity.
+  Warning  FailedScheduling  9m39s  default-scheduler  0/6 nodes are available: 1 node(s) didn't have free ports for the requested pod ports, 2 node(s) had taint {node-role.kubernetes.io/master: }, that the pod didn't tolerate, 3 node(s) didn't match Pod's node affinity.
+ubuntu@rkem1:~$
+``` 
+ #### - If Nginx ingress controller was installed, you must remove it:
+` kubectl delete namespace ingress-nginx `
+` kubectl delete clusterrole ingress-nginx `
+` kubectl delete clusterrolebinding ingress-nginx `
+``` 
+ubuntu@rkem1:~$ kubectl get pod -o wide -n ingress-nginx
+NAME                             READY   STATUS    RESTARTS   AGE   IP          NODE    NOMINATED NODE   READINESS GATES
+ingress-nginx-controller-btw9q   1/1     Running   1          15h   10.0.44.3   rkew3   <none>           <none>
+ingress-nginx-controller-j7q6d   1/1     Running   1          15h   10.0.49.4   rkew4   <none>           <none>
+ingress-nginx-controller-n2mmb   1/1     Running   1          15h   10.0.11.3   rkew2   <none>           <none>
+ingress-nginx-controller-t6vtk   1/1     Running   1          15h   10.0.5.4    rkew1   <none>           <none>
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ kubectl get clusterrole | grep nginx
+ingress-nginx                                                          2021-02-27T17:58:10Z
+ubuntu@rkem1:~$ kubectl get clusterrolebinding  | grep nginx
+ingress-nginx         ClusterRole/ingress-nginx                                                          15h
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ kubectl delete namespace ingress-nginx
+namespace "ingress-nginx" deleted
+ubuntu@rkem1:~$ 
+ubuntu@rkem1:~$ kubectl delete clusterrole ingress-nginx
+clusterrole.rbac.authorization.k8s.io "ingress-nginx" deleted
+ubuntu@rkem1:~$ kubectl delete clusterrolebinding ingress-nginx
+clusterrolebinding.rbac.authorization.k8s.io "ingress-nginx" deleted
+ubuntu@rkem1:~$
+``` 
+ #### - 2. Have at least 2 worker nodes with label _ceph-mgr=enabled_ since Ceph deployment creates a ReplicaSet of 2 pods:
+```  
+ubuntu@rkem1:~$ kubectl get nodes --selector="ceph-mgr=enabled"
+NAME    STATUS   ROLES    AGE   VERSION
+rkew1   Ready    <none>   17h   v1.20.4
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ kubectl -n ceph get po -o wide | grep ceph-mgr
+ceph-mgr-7cc5b955db-6g62b             0/1     Pending     0          46m   <none>            <none>   <none>           <none>
+ceph-mgr-7cc5b955db-xhjhx             1/1     Running     0          46m   192.168.122.180   rkew1    <none>           <none>
+ceph-mgr-keyring-generator-96rml      0/1     Completed   0          53m   10.0.5.11         rkew1    <none>           <none>
+ubuntu@rkem1:~$ kubectl label nodes rkew2 ceph-mgr=enabled
+node/rkew2 labeled
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ kubectl -n ceph get po -o wide | grep ceph-mgr
+ceph-mgr-7cc5b955db-6g62b             0/1     Init:1/2    0          48m   192.168.122.167   rkew2   <none>           <none>
+ceph-mgr-7cc5b955db-xhjhx             1/1     Running     0          48m   192.168.122.180   rkew1   <none>           <none>
+ceph-mgr-keyring-generator-96rml      0/1     Completed   0          54m   10.0.5.11         rkew1   <none>           <none>
+ubuntu@rkem1:~$
+``` 
+
+ #### - 3. Have 3 worker nodes with label _ceph-osd=enabled_ since Ceph deployment expects replication:
+```
+ubuntu@rkem1:~$ MON_POD=$(kubectl get --no-headers pods -n=ceph -l="application=ceph,component=mon" | awk '{ print $1; exit }')
+ubuntu@rkem1:~$ kubectl exec -n ceph ${MON_POD} -- ceph -s
+  cluster:
+    id:     f04aa375-c754-4db5-875c-68f27ec9cd69
+    health: HEALTH_WARN
+            Reduced data availability: 54 pgs inactive
+            Degraded data redundancy: 54 pgs undersized
+            1 pool(s) have no replicas configured
+            OSD count 1 < osd_pool_default_size 3
+
+  services:
+    mon: 1 daemons, quorum rkew1 (age 72m)
+    mgr: rkew1(active, since 69m), standbys: rkew2
+    osd: 1 osds: 1 up (since 70m), 1 in (since 70m)
+
+  data:
+    pools:   5 pools, 58 pgs
+    objects: 0 objects, 0 B
+    usage:   6.1 GiB used, 8.9 GiB / 15 GiB avail
+    pgs:     93.103% pgs not active
+             54 undersized+peered
+             4  active+clean
+
+ubuntu@rkem1:~$
+```
+` ansible rkew2 -m ansible.builtin.copy -a "src=./setup-ceph-loopback-device.sh dest=~/setup-ceph-loopback-device.sh mode=700 owner=ubuntu group=ubuntu" `
+` ansible rkew3 -m ansible.builtin.copy -a "src=./setup-ceph-loopback-device.sh dest=~/setup-ceph-loopback-device.sh mode=700 owner=ubuntu group=ubuntu" `
+` ansible rkew2 -m shell -a '~/setup-ceph-loopback-device.sh --ceph-osd-data /dev/loop0 --ceph-osd-dbwal /dev/loop1' -v `
+` ansible rkew3 -m shell -a '~/setup-ceph-loopback-device.sh --ceph-osd-data /dev/loop0 --ceph-osd-dbwal /dev/loop1' -v `
+` kubectl label nodes rkew1 rkew2 rkew3 ceph-osd=enabled `
+
+ ### - II. First satisfy prerequisites for OSH on the KVMs (K8s cluster):
+[boburciu@r220 ~]$ <br/>
+[boburciu@r220 ~]$ ` cd OpenStackHelm_prereq/ ` <br/>
+[boburciu@r220 OpenStackHelm_prereq]$  <br/>
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible-playbook OpenStackHelm_prereq_setup.yml -v `
+```  
+[boburciu@r220 ~]$ cd OpenStackHelm_prereq/
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ ls -lt
+total 20
+-rwx------. 1 boburciu boburciu 7160 Dec  7 21:31 get_helm.sh
+-rw-rw-r--. 1 boburciu boburciu  483 Dec  7 20:41 OpenStackHelm_prereq_setup.yml
+-rw-rw-r--. 1 boburciu boburciu  908 Dec  7 20:40 install_osh_packages.yml
+-rw-rw-r--. 1 boburciu boburciu  573 Dec  7 20:31 set_passwordless_sudo.yml
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ cat OpenStackHelm_prereq_setup.yml
+---
+- name: satisfy Common Deployment Requirements prereq for OSH install
+  # per https://docs.openstack.org/openstack-helm/latest/install/common-requirements.html
+  hosts: ubuntu-rke-masters
+
+# ======= How to run
+# [boburciu@r220 ~]$ cd OpenStackHelm_prereq/
+# [boburciu@r220 OpenStackHelm_prereq]$ ansible-playbook OpenStackHelm_prereq_setup.yml -v
+
+- name: 1st, Passwordless sudo
+  import_playbook: set_passwordless_sudo.yml
+
+- name: 2nd, Latest Version Installs
+  import_playbook: install_osh_packages.yml
+
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ cat set_passwordless_sudo.yml
+---
+- name: Passwordless sudo
+    # per https://docs.openstack.org/openstack-helm/latest/install/common-requirements.html
+    # add to /etc/sudoers for each node:
+
+    # root    ALL=(ALL) NOPASSWD: ALL
+    # ubuntu  ALL=(ALL) NOPASSWD: ALL
+  hosts: ubuntu-rke
+  tasks:
+    - name: make ubuntu user able to sudo without password check and check visudo for errors
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        line: 'ubuntu  ALL=(ALL) NOPASSWD: ALL'
+        line: 'root    ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ cat install_osh_packages.yml
+---
+- name: Latest Version Installs
+    # per https://docs.openstack.org/openstack-helm/latest/install/common-requirements.html
+    # on K8s master nodes install the latest versions of Git, CA Certs & Make if necessary
+
+    # #!/bin/bash
+    # sudo apt-get update
+    # sudo apt-get install --no-install-recommends -y \
+    #         ca-certificates \
+    #         git \
+    #         make \
+    #         jq \
+    #         nmap \
+    #         curl \
+    #         uuid-runtime \
+    #         bc \
+    #         python3-pip
+  hosts: ubuntu-rke-masters
+  tasks:
+    - name: Update all packages to their latest version
+      apt:
+        name: "*"
+        state: latest
+    - name: Install a list of packages
+      apt:
+        pkg:
+        - ca-certificates
+        - git
+        - make
+        - jq
+        - nmap
+        - curl
+        - uuid-runtime
+        - bc
+        - python3-pip
+
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ ansible-playbook OpenStackHelm_prereq_setup.yml -v
+Using /etc/ansible/ansible.cfg as config file
+:
+PLAY RECAP *******************************************************************************************************************
+rkem1                      : ok=6    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkem2                      : ok=6    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew1                      : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew2                      : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew3                      : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew4                      : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+[boburciu@r220 OpenStackHelm_prereq]$
+```  
+
+ ### - III. Install helm. OSH uses Helm v2 with Tiller to deploy OpenStack services as containers. There are two parts to Helm: the Helm client (*helm*) and the Helm server (*Tiller*).
+
+ #### - 0. to remove Helm3 client (if installed):
+```  
+ubuntu@rkem1:~$ ls -lt /usr/local/bin/helm
+-rwxr-xr-x 1 root root 39854080 Feb  4 21:52 /usr/local/bin/helm
+ubuntu@rkem1:~$
+``` 
+ubuntu@rkem1:~$ ` sudo mv /usr/local/bin/helm helm3_binary/ `
+
+ #### - 1. to install Helm client:
+` curl -LO https://git.io/get_helm.sh `   <br/>
+` chmod 700 get_helm.sh `<br/>
+` ./get_helm.sh `<br/>
+
+ #### - 2. the easiest way to install *Tiller* into the cluster is simply to run ` helm init `. This will validate that helm’s local environment is set up correctly (and set it up if necessary) and then it will connect to whatever cluster *kubectl* connects to by default (` kubectl config view `).
+```  
+[boburciu@r220 OpenStackHelm_prereq]$ pwd
+/home/boburciu/OpenStackHelm_prereq
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ ls -lt
+total 12
+-rw-rw-r--. 1 boburciu boburciu 483 Dec  7 20:41 OpenStackHelm_prereq_setup.yml
+-rw-rw-r--. 1 boburciu boburciu 908 Dec  7 20:40 install_osh_packages.yml
+-rw-rw-r--. 1 boburciu boburciu 573 Dec  7 20:31 set_passwordless_sudo.yml
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ curl -LO https://git.io/get_helm.sh
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0
+100  7160  100  7160    0     0   2428      0  0:00:02  0:00:02 --:--:-- 25211
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ chmod 700 get_helm.sh
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ ./get_helm.sh
+Downloading https://get.helm.sh/helm-v2.17.0-linux-amd64.tar.gz
+Preparing to install helm and tiller into /usr/local/bin
+[sudo] password for boburciu:
+helm installed into /usr/local/bin/helm
+tiller installed into /usr/local/bin/tiller
+Run 'helm init' to configure helm.
+[boburciu@r220 OpenStackHelm_prereq]$ helm init
+Creating /home/boburciu/.helm
+Creating /home/boburciu/.helm/repository
+Creating /home/boburciu/.helm/repository/cache
+Creating /home/boburciu/.helm/repository/local
+Creating /home/boburciu/.helm/plugins
+Creating /home/boburciu/.helm/starters
+Creating /home/boburciu/.helm/cache/archive
+Creating /home/boburciu/.helm/repository/repositories.yaml
+Adding stable repo with URL: https://charts.helm.sh/stable
+Adding local repo with URL: http://127.0.0.1:8879/charts
+$HELM_HOME has been configured at /home/boburciu/.helm.
+
+Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster.
+
+Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.
+To prevent this, run `helm init` with the --tiller-tls-verify flag.
+For more information on securing your installation see: https://v2.helm.sh/docs/securing_installation/
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+ #### - 3. after `helm init`, you should be able to run `kubectl get pods --namespace kube-system` and see *Tiller* running:
+[boburciu@r220 OpenStackHelm_prereq]$ ` kubectl get pods --namespace kube-system -o=wide | grep tiller `
+```
+tiller-deploy-69c484895f-wmvxn            1/1     Running        0          6m17s   10.42.11.4        rkew3   <none>           <none>
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ kubectl get pods --namespace kube-system -o=wide | head -1
+NAME                                      READY   STATUS         RESTARTS   AGE     IP                NODE    NOMINATED NODE   READINESS GATES
+```
+
+ ### - IV. Clone the OpenStack-Helm Repos
+ubuntu@rkem1:~$ ` sudo git clone https://opendev.org/openstack/openstack-helm.git /opt/openstack-helm `
+```
+Cloning into '/opt/openstack-helm'...
+remote: Enumerating objects: 34989, done.
+remote: Counting objects: 100% (34989/34989), done.
+remote: Compressing objects: 100% (11799/11799), done.
+remote: Total 34989 (delta 26576), reused 30294 (delta 22577)
+Receiving objects: 100% (34989/34989), 7.37 MiB | 5.61 MiB/s, done.
+Resolving deltas: 100% (26576/26576), done.
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$
+```
+ubuntu@rkem1:~$ ` sudo git clone https://opendev.org/openstack/openstack-helm-infra.git /opt/openstack-helm-infra `
+```
+Cloning into '/opt/openstack-helm-infra'...
+remote: Enumerating objects: 24032, done.
+remote: Counting objects: 100% (24032/24032), done.
+remote: Compressing objects: 100% (10069/10069), done.
+remote: Total 24032 (delta 17245), reused 19383 (delta 13209)
+Receiving objects: 100% (24032/24032), 4.38 MiB | 7.00 MiB/s, done.
+Resolving deltas: 100% (17245/17245), done.
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$
+```
+
+ ## Deployment of OSH
+
+ ### - 0. Need to prepare KVM hosts in K8s cluster with proper labeling for pod selector.
+ #### In the case of Ceph,it is important to note that Ceph monitors and OSDs are each deployed as a DaemonSet. Be aware that labeling an even number of monitor nodes can result in trouble when trying to reach a quorum. Nodes are labeled according to their Openstack roles:
+   ####   **Ceph MON Nodes: ceph-mon**
+   ####   **Ceph OSD Nodes: ceph-osd**
+   ####   **Ceph MDS Nodes: ceph-mds**
+   ####   **Ceph RGW Nodes: ceph-rgw**
+   ####   **Control Plane: openstack-control-plane**
+   ####   **Compute Nodes: openvswitch, openstack-compute-node**
+
+ubuntu@rkem1:~$ ` kubectl label nodes rkem1 rkem2 rkew1 openstack-control-plane=enabled `
+```
+node/rkem1 labeled
+node/rkem2 labeled
+node/rkew1 labeled
+ubuntu@rkem1:~$
+```
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ ` kubectl label nodes kubectl label nodes rkew2 rkew3 rkew4 openstack-compute-node=enabled openvswitch=enabled linuxbridge=enabled `
+```
+node/rkew2 labeled
+node/rkew3 labeled
+node/rkew4 labeled
+```
+ubuntu@rkem1:~$ ` kubectl label nodes rkew1 ceph-mon=enabled ceph-osd=enabled ceph-mds=enabled ceph-rgw=enabled ceph-mgr=enabled `
+```
+node/rkew1 labeled
+ubuntu@rkem1:~$
+```
+ubuntu@rkem1:~$ ` kubectl get nodes --show-labels `
+```
+NAME    STATUS   ROLES                  AGE   VERSION   LABELS
+rkem1   Ready    control-plane,master   14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkem1,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node-role.kubernetes.io/master=,openstack-control-plane=enabled
+rkem2   Ready    control-plane,master   14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkem2,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node-role.kubernetes.io/master=,openstack-control-plane=enabled
+rkew1   Ready    <none>                 14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ceph-mds=enabled,ceph-mgr=enabled,ceph-mon=enabled,ceph-osd=enabled,ceph-rgw=enabled,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew1,kubernetes.io/os=linux,openstack-control-plane=enabled
+rkew2   Ready    <none>                 14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew2,kubernetes.io/os=linux,linuxbridge=enabled,openstack-compute-node=enabled,openvswitch=enabled
+rkew3   Ready    <none>                 14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew3,kubernetes.io/os=linux,linuxbridge=enabled,openstack-compute-node=enabled,openvswitch=enabled
+rkew4   Ready    <none>                 14h   v1.20.4   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=rkew4,kubernetes.io/os=linux,linuxbridge=enabled,openstack-compute-node=enabled,openvswitch=enabled
+```
+
+ ### - I. Per [OSH multi-node install docs](https://docs.openstack.org/openstack-helm/latest/install/multinode.html) 
+ubuntu@rkem1:~$ ` cd /opt/openstack-helm ` <br/> 
+ubuntu@rkem1:/opt/openstack-helm$ ` ./tools/deployment/multinode/010-setup-client.sh `
+```
+:
++ sudo -H mkdir -p /etc/openstack
+++ id -un
++ sudo -H chown -R ubuntu: /etc/openstack
++ FEATURE_GATE=tls
++ [[ '' =~ (^|[[:space:]])tls($|[[:space:]]) ]]
++ tee /etc/openstack/clouds.yaml
+  clouds:
+    openstack_helm:
+      region_name: RegionOne
+      identity_api_version: 3
+      auth:
+        username: 'admin'
+        password: 'password'
+        project_name: 'admin'
+        project_domain_name: 'default'
+        user_domain_name: 'default'
+        auth_url: 'http://keystone.openstack.svc.cluster.local/v3'
++ make helm-toolkit
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ #### -  Doc is incomplete, running _/opt/openstack-helm/tools/deployment/multinode/010-setup-client.sh_ script will not assemble chart and you need to:  <br/>
+ubuntu@rkem1:~$ ` cd / ` <br/>
+ubuntu@rkem1:/$ ` helm serve & `
+```
+[1] 6056
+ubuntu@rkem1:/$ Regenerating index. This may take a moment.
+Now serving you on 127.0.0.1:8879
+```
+` helm repo add local http://localhost:8879/charts `
+```
+"local" has been added to your repositories
+ubuntu@rkem1:/$
+```
+ubuntu@rkem1:/$  ` cd /opt/openstack-helm-infra `  <br/>
+ubuntu@rkem1:/opt/openstack-helm-infra$ ` sudo make ` 
+```
+===== Processing [helm-toolkit] chart =====
+make[1]: Entering directory '/opt/openstack-helm-infra'
+if [ -f helm-toolkit/Makefile ]; then make -C helm-toolkit; fi
+if [ -f helm-toolkit/requirements.yaml ]; then helm dep up helm-toolkit; fi
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "local" chart repository
+...Successfully got an update from the "stable" chart repository
+Update Complete.
+Saving 0 charts
+Deleting outdated charts
+if [ -d helm-toolkit ]; then helm lint helm-toolkit; fi
+==> Linting helm-toolkit
+Lint OK
+
+1 chart(s) linted, no failures
+if [ -d helm-toolkit ]; then helm package helm-toolkit; fi
+Successfully packaged chart and saved it to: /opt/openstack-helm-infra/helm-toolkit-0.1.5.tgz
+make[1]: Leaving directory '/opt/openstack-helm-infra'
+
+===== Processing [helm-toolkit] chart =====
+===== Processing [gnocchi] chart =====
+===== Processing [elasticsearch] chart =====
+===== Processing [calico] chart =====
+===== Processing [fluentd] chart =====
+===== Processing [ceph-rgw] chart =====
+===== Processing [powerdns] chart =====
+===== Processing [prometheus-kube-state-metrics] chart =====
+===== Processing [nfs-provisioner] chart =====
+===== Processing [prometheus-process-exporter] chart =====
+===== Processing [flannel] chart =====
+===== Processing [mongodb] chart =====
+===== Processing [kibana] chart =====
+===== Processing [libvirt] chart =====
+===== Processing [podsecuritypolicy] chart =====
+===== Processing [ldap] chart =====
+===== Processing [fluentbit] chart =====
+===== Processing [ceph-osd] chart =====
+===== Processing [zookeeper] chart =====
+===== Processing [kafka] chart =====
+===== Processing [redis] chart =====
+===== Processing [grafana] chart =====
+===== Processing [nagios] chart =====
+===== Processing [rabbitmq] chart =====
+===== Processing [daemonjob-controller] chart =====
+===== Processing [prometheus-node-exporter] chart =====
+===== Processing [local-storage] chart =====
+===== Processing [kubernetes-keystone-webhook] chart =====
+===== Processing [openvswitch] chart =====
+===== Processing [elastic-apm-server] chart =====
+===== Processing [prometheus-openstack-exporter] chart =====
+===== Processing [ceph-mon] chart =====
+===== Processing [mariadb] chart =====
+===== Processing [ca-issuer] chart =====
+===== Processing [prometheus] chart =====
+===== Processing [namespace-config] chart =====
+===== Processing [kube-dns] chart =====
+===== Processing [prometheus-blackbox-exporter] chart =====
+===== Processing [prometheus-alertmanager] chart =====
+===== Processing [ceph-client] chart =====
+===== Processing [falco] chart =====
+===== Processing [elastic-filebeat] chart =====
+===== Processing [alerta] chart =====
+===== Processing [metacontroller] chart =====
+===== Processing [ceph-provisioners] chart =====
+===== Processing [ingress] chart =====
+===== Processing [memcached] chart =====
+===== Processing [etcd] chart =====
+===== Processing [tiller] chart =====
+===== Processing [lockdown] chart =====
+===== Processing [registry] chart =====
+===== Processing [kubernetes-node-problem-detector] chart =====
+===== Processing [postgresql] chart =====
+===== Processing [elastic-packetbeat] chart =====
+===== Processing [elastic-metricbeat] chart =====
+```
+
+ ### - II. Then _/opt/openstack-helm/./tools/deployment/component/common/ingress.sh_ can be run
+ ##### -  Obs, if it returns the below error:
+ubuntu@rkem1:/opt/openstack-helm-infra$ ` cd /opt/openstack-helm ` <br/>
+ubuntu@rkem1:/opt/openstack-helm$ ` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
+```
+:
+:
++ helm upgrade --install ingress-kube-system ../openstack-helm-infra/ingress --namespace=kube-system --values=/tmp/ingress-kube-system.yaml
+UPGRADE FAILED
+Error: configmaps is forbidden: User "system:serviceaccount:kube-system:default" cannot list resource "configmaps" in API group "" in the namespace "kube-system"
+Error: UPGRADE FAILED: configmaps is forbidden: User "system:serviceaccount:kube-system:default" cannot list resource "configmaps" in API group "" in the namespace "kube-system"
+ubuntu@rkem1:/opt/openstack-helm$ kubectl [--namespace kube-system] get serviceaccount
+Error: unknown command "[--namespace" for "kubectl"
+Run 'kubectl --help' for usage.
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$
+```
+ ##### -  You need to:
+ubuntu@rkem1:/opt/openstack-helm$ ` kubectl create serviceaccount --namespace kube-system tiller `
+```
+serviceaccount/tiller created
+ubuntu@rkem1:/opt/openstack-helm$
+```
+ubuntu@rkem1:/opt/openstack-helm$ ` kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller `
+```
+clusterrolebinding.rbac.authorization.k8s.io/tiller-cluster-rule created
+ubuntu@rkem1:/opt/openstack-helm$
+```
+ubuntu@rkem1:/opt/openstack-helm$ ` kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}' `
+```
+deployment.apps/tiller-deploy patched (no change)
+ubuntu@rkem1:/opt/openstack-helm$
+```
+ubuntu@rkem1:/opt/openstack-helm$ ` helm init --upgrade --service-account tiller `
+```
+$HELM_HOME has been configured at /home/ubuntu/.helm.
+
+Tiller (the Helm server-side component) has been updated to ghcr.io/helm/tiller:v2.17.0 .
+ubuntu@rkem1:/opt/openstack-helm$
+```
+ ##### -  Run the script
+ubuntu@rkem1:/opt/openstack-helm$ ` sudo OSH_DEPLOY_MULTINODE=True ./tools/deployment/component/common/ingress.sh `
+
+
+ ### - III. Create loopback devices for CEPH
+ ##### -  Check the K8s nodes for CEPH-OSD:
+ubuntu@rkem1:~$ ` kubectl get nodes --selector="ceph-osd=enabled" `
+```
+ubuntu@rkem1:~$ kubectl get nodes --selector="ceph-osd=enabled"
+NAME    STATUS   ROLES    AGE   VERSION
+rkew1   Ready    <none>   16h   v1.20.4
+ubuntu@rkem1:~$
+```
+
+ ##### -  Transfer the Ansible inventory file and the script to be run on all targe nodes (CEPH-labeled) from _rkem1_ in order to run Ansible ad-hoc from CentOS host, since all K8s nodes are SSH reachable from this host:
+[boburciu@r220 K8s_cluster_RKE]$ ` cd ~/OpenStackHelm_prereq/ `
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ls -lt
+total 20
+-rw-rw-r--. 1 boburciu boburciu  512 Dec  7 21:48 OpenStackHelm_prereq_setup.yml
+-rw-rw-r--. 1 boburciu boburciu  571 Dec  7 21:47 set_passwordless_sudo.yml
+-rw-rw-r--. 1 boburciu boburciu  917 Dec  7 21:47 install_osh_packages.yml
+-rwx------. 1 boburciu boburciu 7160 Dec  7 21:31 get_helm.sh
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` scp -3 -r ubuntu@rkem1:/opt/openstack-helm-infra/tools/gate/devel/multinode-inventory_modifiedBurciu.yaml ./multinode-inventory_modifiedBurciu.yaml `
+```
+multinode-inventory_modifiedBurciu.yaml                                                     100% 1103   806.2KB/s   00:00
+```
+[boburciu@r220 OpenStackHelm_prereq]$ `scp -3 -r ubuntu@rkem1:/opt/openstack-helm/tools/deployment/common/setup-ceph-loopback-device.sh ./setup-ceph-loopback-device.sh `
+```
+setup-ceph-loopback-device.sh                                                               100% 1727     1.5MB/s   00:00
+[boburciu@r220 OpenStackHelm_prereq]$ ls -lt
+total 28
+-rwxr-xr-x. 1 boburciu boburciu 1727 Dec  9 22:27 setup-ceph-loopback-device.sh
+-rw-r--r--. 1 boburciu boburciu 1309 Dec  9 22:24 multinode-inventory_modifiedBurciu.yaml
+-rw-rw-r--. 1 boburciu boburciu  512 Dec  7 21:48 OpenStackHelm_prereq_setup.yml
+-rw-rw-r--. 1 boburciu boburciu  571 Dec  7 21:47 set_passwordless_sudo.yml
+-rw-rw-r--. 1 boburciu boburciu  917 Dec  7 21:47 install_osh_packages.yml
+-rwx------. 1 boburciu boburciu 7160 Dec  7 21:31 get_helm.sh
+[boburciu@r220 OpenStackHelm_prereq]$
+
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ vi multinode-inventory_modifiedBurciu.yaml
+[boburciu@r220 OpenStackHelm_prereq]$
+[boburciu@r220 OpenStackHelm_prereq]$ cat multinode-inventory_modifiedBurciu.yaml
+---
+all:
+  children:
+    primary:
+      hosts:
+        rkew4:
+          ansible_port: 22
+          ansible_host: rke4
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_extra_args: -o StrictHostKeyChecking=no
+    nodes:
+      hosts:
+        rkew5:
+          ansible_port: 22
+          ansible_host: rkew5
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_extra_args: -o StrictHostKeyChecking=no
+        rkew6:
+          ansible_port: 22
+          ansible_host: rkew6
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_extra_args: -o StrictHostKeyChecking=no
+...
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+
+ ##### -  Since a script needs to be run on all target KVMs (worker nodes), we transfer it and the run it with Ansible ad-hoc:
+[boburciu@r220 ~]$ ` cd /home/boburciu/OpenStackHelm_prereq ` <br/>
+[boburciu@r220 OpenStackHelm_prereq]$ `ansible rkew1 -m ansible.builtin.copy -a "src=./setup-ceph-loopback-device.sh dest=~/setup-ceph-loopback-device.sh mode=700 owner=ubuntu group=ubuntu" `
+```
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+rkew1 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "a71b98a281ccea721435fdd1a2bc857d5caf6f79",
+    "dest": "/root/setup-ceph-loopback-device.sh",
+    "gid": 1000,
+    "group": "ubuntu",
+    "mode": "0700",
+    "owner": "ubuntu",
+    "path": "/root/setup-ceph-loopback-device.sh",
+    "size": 1727,
+    "state": "file",
+    "uid": 1000
+}
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible rkew1 -m shell -a '~/setup-ceph-loopback-device.sh --ceph-osd-data /dev/loop0 --ceph-osd-dbwal /dev/loop1' -v `
+```
+Using /etc/ansible/ansible.cfg as config file
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+rkew1 | CHANGED | rc=0 >>
+/dev/loop1: [64768]:415944 (/var/lib/openstack-helm/ceph/ceph-osd-db-wal-loopbackfile.img)
+/dev/loop0: [64768]:415943 (/var/lib/openstack-helm/ceph/ceph-osd-data-loopbackfile.img)
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+
+ ### - IV. Deploy Ceph
+ ##### - Run the script
+
+ubuntu@rkem1:~$ ` cd /opt/openstack-helm ` <br/>
+ubuntu@rkem1:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/030-ceph.sh `
+```
++ '[' -s /tmp/ceph-fs-uuid.txt ']'
++ uuidgen
+++ ./tools/deployment/multinode/kube-node-subnet.sh
+Flag --generator has been deprecated, has no effect and will be removed in the future.
+Flag --generator has been deprecated, has no effect and will be removed in the future.
++ CEPH_PUBLIC_NETWORK=192.168.122.0/24
++ CEPH_CLUSTER_NETWORK=192.168.122.0/24
+++ cat /tmp/ceph-fs-uuid.txt
+:
+:
+
++ ./tools/deployment/common/wait-for-pods.sh ceph 1200
+Containers failed to start after 1200 seconds
+
+NAME                                   READY   STATUS      RESTARTS   AGE   IP                NODE    NOMINATED NODE   READINESS GATES
+ceph-bootstrap-x88wx                   0/1     Completed   0          26m   10.42.176.7       rkew5   <none>           <none>
+ceph-checkdns-758fd57744-bbf8k         1/1     Running     0          20m   192.168.122.88    rkew6   <none>           <none>
+ceph-mds-59d4564c65-bndvd              0/1     Init:0/2    0          20m   10.42.176.9       rkew5   <none>           <none>
+ceph-mds-59d4564c65-hlfmb              0/1     Init:0/2    0          20m   10.42.212.138     rkew6   <none>           <none>
+ceph-mds-keyring-generator-9wpzt       0/1     Completed   0          26m   10.42.212.134     rkew6   <none>           <none>
+ceph-mgr-857b56f6dc-g9mw6              1/1     Running     0          20m   192.168.122.88    rkew6   <none>           <none>
+ceph-mgr-857b56f6dc-lh82p              1/1     Running     0          20m   192.168.122.141   rkew5   <none>           <none>
+ceph-mgr-keyring-generator-mpzl5       0/1     Completed   0          26m   10.42.212.135     rkew6   <none>           <none>
+ceph-mon-49jfp                         1/1     Running     0          26m   192.168.122.88    rkew6   <none>           <none>
+ceph-mon-5mkrl                         1/1     Running     0          26m   192.168.122.142   rkew4   <none>           <none>
+ceph-mon-check-fc8b6f6cf-ztp5q         1/1     Running     0          26m   10.42.176.8       rkew5   <none>           <none>
+ceph-mon-keyring-generator-l9zc6       0/1     Completed   0          26m   10.42.212.137     rkew6   <none>           <none>
+ceph-mon-pwphw                         1/1     Running     0          26m   192.168.122.141   rkew5   <none>           <none>
+ceph-osd-default-83945928-4tl62        2/2     Running     0          22m   192.168.122.141   rkew5   <none>           <none>
+ceph-osd-default-83945928-jv5m2        2/2     Running     0          22m   192.168.122.88    rkew6   <none>           <none>
+ceph-osd-default-83945928-qhbxh        2/2     Running     0          22m   192.168.122.142   rkew4   <none>           <none>
+ceph-osd-keyring-generator-r9pw8       0/1     Completed   0          26m   10.42.212.136     rkew6   <none>           <none>
+ceph-pool-checkpgs-1607717700-6rslp    0/1     Init:0/1    0          18m   192.168.122.141   rkew5   <none>           <none>
+ceph-rbd-pool-xd65f                    1/1     Running     3          20m   10.42.212.139     rkew6   <none>           <none>
+ceph-storage-keys-generator-rlq49      0/1     Completed   0          26m   10.42.176.6       rkew5   <none>           <none>
+ingress-8c574f9b4-gnl5s                1/1     Running     0          97m   10.42.44.83       rkew4   <none>           <none>
+ingress-8c574f9b4-jq4k6                1/1     Running     1          2d    10.42.44.78       rkew4   <none>           <none>
+ingress-error-pages-6fb6d67c57-r8w9w   1/1     Running     1          2d    10.42.44.79       rkew4   <none>           <none>
+ingress-error-pages-6fb6d67c57-rj58x   1/1     Running     0          96m   10.42.44.87       rkew4   <none>           <none>
+
+Some pods are in pending state:
+NAME                                  READY   STATUS     RESTARTS   AGE   IP                NODE    NOMINATED NODE   READINESS GATES
+ceph-mds-59d4564c65-bndvd             0/1     Init:0/2   0          20m   10.42.176.9       rkew5   <none>           <none>
+ceph-mds-59d4564c65-hlfmb             0/1     Init:0/2   0          20m   10.42.212.138     rkew6   <none>           <none>
+ceph-pool-checkpgs-1607717700-6rslp   0/1     Init:0/1   0          18m   192.168.122.141   rkew5   <none>           <none>
+Some jobs have not succeeded
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ ### - V. Deploy Ceph
+ ##### - Run the script
+
+ubuntu@rkem1:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/040-ceph-ns-activate.sh `
+```
+++ ./tools/deployment/multinode/kube-node-subnet.sh
+Flag --generator has been deprecated, has no effect and will be removed in the future.
+Flag --generator has been deprecated, has no effect and will be removed in the future.
++ CEPH_PUBLIC_NETWORK=192.168.122.0/24
++ CEPH_CLUSTER_NETWORK=192.168.122.0/24
++ tee /tmp/ceph-openstack-config.yaml
+endpoints:
+  ceph_mon:
+    namespace: ceph
+network:
+  public: 192.168.122.0/24
+  cluster: 192.168.122.0/24
+deployment:
+  ceph: false
+  rbd_provisioner: false
+  cephfs_provisioner: false
+  client_secrets: true
+bootstrap:
+  enabled: false
+storageclass:
+  cephfs:
+    provision_storage_class: false
++ : ../openstack-helm-infra
++ helm upgrade --install ceph-openstack-config ../openstack-helm-infra/ceph-provisioners --namespace=openstack --values=/tmp/ceph-openstack-config.yaml
+Release "ceph-openstack-config" does not exist. Installing it now.
+NAME:   ceph-openstack-config
+LAST DEPLOYED: Fri Dec 11 21:15:47 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ClusterRole
+NAME                        CREATED AT
+ceph-openstack-config-test  2020-12-11T21:15:48Z
+
+==> v1/ClusterRoleBinding
+NAME                        ROLE                                    AGE
+ceph-openstack-config-test  ClusterRole/ceph-openstack-config-test  0s
+
+==> v1/ConfigMap
+NAME                                         DATA  AGE
+ceph-etc                                     1     0s
+ceph-openstack-config-ceph-prov-bin-clients  3     0s
+
+==> v1/Job
+NAME                                         COMPLETIONS  DURATION  AGE
+ceph-openstack-config-ceph-ns-key-generator  0/1          0s        0s
+
+==> v1/Pod(related)
+NAME                                               READY  STATUS    RESTARTS  AGE
+ceph-openstack-config-ceph-ns-key-generator-q72fm  0/1    Init:0/1  0         0s
+
+==> v1/Role
+NAME                                               CREATED AT
+ceph-openstack-config-ceph-ns-key-cleaner          2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator        2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  2020-12-11T21:15:48Z
+
+==> v1/RoleBinding
+NAME                                               ROLE                                                    AGE
+ceph-openstack-config-ceph-ns-key-cleaner          Role/ceph-openstack-config-ceph-ns-key-cleaner          0s
+ceph-openstack-config-ceph-ns-key-generator        Role/ceph-openstack-config-ceph-ns-key-generator        0s
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  Role/ceph-openstack-config-ceph-ns-key-generator-0h7zc  0s
+
+==> v1/ServiceAccount
+NAME                                         SECRETS  AGE
+ceph-openstack-config-ceph-ns-key-cleaner    1        0s
+ceph-openstack-config-ceph-ns-key-generator  1        0s
+ceph-openstack-config-test                   1        0s
+
+
++ ./tools/deployment/common/wait-for-pods.sh openstack
++ helm status ceph-openstack-config
+LAST DEPLOYED: Fri Dec 11 21:15:47 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ClusterRole
+NAME                        CREATED AT
+ceph-openstack-config-test  2020-12-11T21:15:48Z
+
+==> v1/ClusterRoleBinding
+NAME                        ROLE                                    AGE
+ceph-openstack-config-test  ClusterRole/ceph-openstack-config-test  6s
+
+==> v1/ConfigMap
+NAME                                         DATA  AGE
+ceph-etc                                     1     6s
+ceph-openstack-config-ceph-prov-bin-clients  3     6s
+
+==> v1/Job
+NAME                                         COMPLETIONS  DURATION  AGE
+ceph-openstack-config-ceph-ns-key-generator  1/1          3s        6s
+
+==> v1/Pod(related)
+NAME                                               READY  STATUS     RESTARTS  AGE
+ceph-openstack-config-ceph-ns-key-generator-q72fm  0/1    Completed  0         6s
+
+==> v1/Role
+NAME                                               CREATED AT
+ceph-openstack-config-ceph-ns-key-cleaner          2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator        2020-12-11T21:15:48Z
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  2020-12-11T21:15:48Z
+
+==> v1/RoleBinding
+NAME                                               ROLE                                                    AGE
+ceph-openstack-config-ceph-ns-key-cleaner          Role/ceph-openstack-config-ceph-ns-key-cleaner          6s
+ceph-openstack-config-ceph-ns-key-generator        Role/ceph-openstack-config-ceph-ns-key-generator        6s
+ceph-openstack-config-ceph-ns-key-generator-0h7zc  Role/ceph-openstack-config-ceph-ns-key-generator-0h7zc  6s
+
+==> v1/ServiceAccount
+NAME                                         SECRETS  AGE
+ceph-openstack-config-ceph-ns-key-cleaner    1        6s
+ceph-openstack-config-ceph-ns-key-generator  1        6s
+ceph-openstack-config-test                   1        6s
+
+
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ ### - V. Deploy MariaDB
+ ##### - Run the script
+
+ubuntu@rkem1:/opt/openstack-helm$ ` sudo ./tools/deployment/multinode/050-mariadb.sh `
+```
++ tee /tmp/mariadb.yaml
+pod:
+  replicas:
+    server: 3
+    ingress: 3
++ : ../openstack-helm-infra
++ helm upgrade --install mariadb ../openstack-helm-infra/mariadb --namespace=openstack --values=/tmp/mariadb.yaml
+Release "mariadb" does not exist. Installing it now.
+NAME:   mariadb
+LAST DEPLOYED: Fri Dec 11 21:17:55 2020
+NAMESPACE: openstack
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/ConfigMap
+NAME                  DATA  AGE
+mariadb-bin           5     1s
+mariadb-etc           3     1s
+mariadb-ingress-conf  1     1s
+mariadb-ingress-etc   1     1s
+mariadb-services-tcp  1     1s
+
+==> v1/Deployment
+NAME                         READY  UP-TO-DATE  AVAILABLE  AGE
+mariadb-ingress              0/3    3           0          1s
+mariadb-ingress-error-pages  0/1    1           0          1s
+
+==> v1/Pod(related)
+NAME                                         READY  STATUS    RESTARTS  AGE
+mariadb-ingress-7d8c66db8f-4v2cd             0/1    Init:0/1  0         1s
+mariadb-ingress-7d8c66db8f-k8ljv             0/1    Init:0/1  0         1s
+mariadb-ingress-7d8c66db8f-zs5bd             0/1    Init:0/1  0         1s
+mariadb-ingress-error-pages-856566b76-hfwzn  0/1    Init:0/1  0         1s
+mariadb-server-0                             0/1    Pending   0         2s
+mariadb-server-1                             0/1    Pending   0         2s
+mariadb-server-2                             0/1    Pending   0         1s
+
+==> v1/Role
+NAME                               CREATED AT
+mariadb-ingress                    2020-12-11T21:17:56Z
+mariadb-mariadb                    2020-12-11T21:17:56Z
+mariadb-openstack-mariadb-ingress  2020-12-11T21:17:56Z
+mariadb-openstack-mariadb-test     2020-12-11T21:17:56Z
+
+==> v1/RoleBinding
+NAME                     ROLE                                    AGE
+mariadb-ingress          Role/mariadb-ingress                    1s
+mariadb-mariadb          Role/mariadb-mariadb                    1s
+mariadb-mariadb-ingress  Role/mariadb-openstack-mariadb-ingress  1s
+mariadb-mariadb-test     Role/mariadb-openstack-mariadb-test     1s
+
+==> v1/Secret
+NAME                      TYPE    DATA  AGE
+mariadb-dbadmin-password  Opaque  1     1s
+mariadb-dbaudit-password  Opaque  1     1s
+mariadb-dbsst-password    Opaque  1     1s
+mariadb-secrets           Opaque  2     1s
+
+==> v1/Service
+NAME                         TYPE       CLUSTER-IP    EXTERNAL-IP  PORT(S)            AGE
+mariadb                      ClusterIP  10.43.92.165  <none>       3306/TCP           1s
+mariadb-discovery            ClusterIP  None          <none>       3306/TCP,4567/TCP  1s
+mariadb-ingress-error-pages  ClusterIP  None          <none>       80/TCP             1s
+mariadb-server               ClusterIP  10.43.208.9   <none>       3306/TCP           1s
+
+==> v1/ServiceAccount
+NAME                         SECRETS  AGE
+mariadb-ingress              1        1s
+mariadb-ingress-error-pages  1        1s
+mariadb-mariadb              1        1s
+mariadb-test                 1        1s
+
+==> v1/StatefulSet
+NAME            READY  AGE
+mariadb-server  0/3    1s
+
+==> v1beta1/PodDisruptionBudget
+NAME            MIN AVAILABLE  MAX UNAVAILABLE  ALLOWED DISRUPTIONS  AGE
+mariadb-server  0              N/A              0                    1s
+
+
++ ./tools/deployment/common/wait-for-pods.sh openstack
+Containers failed to start after 900 seconds
+
+NAME                                                READY   STATUS      RESTARTS   AGE    IP              NODE     NOMINATED NODE   READINESS GATES
+ceph-openstack-config-ceph-ns-key-generator-q72fm   0/1     Completed   0          17m    10.42.212.140   rkew6    <none>           <none>
+ingress-6cbc96b8fd-5n6bn                            1/1     Running     0          156m   10.42.44.82     rkew4    <none>           <none>
+ingress-6cbc96b8fd-lwtkl                            1/1     Running     0          156m   10.42.44.85     rkew4    <none>           <none>
+ingress-error-pages-97b98747c-gfjx2                 1/1     Running     0          156m   10.42.44.81     rkew4    <none>           <none>
+ingress-error-pages-97b98747c-wq9tf                 1/1     Running     0          156m   10.42.44.86     rkew4    <none>           <none>
+mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running     0          15m    10.42.176.12    rkew5    <none>           <none>
+mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running     0          15m    10.42.212.141   rkew6    <none>           <none>
+mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running     0          15m    10.42.44.90     rkew4    <none>           <none>
+mariadb-ingress-error-pages-856566b76-hfwzn         1/1     Running     0          15m    10.42.176.11    rkew5    <none>           <none>
+mariadb-server-0                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+mariadb-server-1                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+mariadb-server-2                                    0/1     Pending     0          15m    <none>          <none>   <none>           <none>
+
+Some pods are in pending state:
+NAME               READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE   READINESS GATES
+mariadb-server-0   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+mariadb-server-1   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+mariadb-server-2   0/1     Pending   0          15m   <none>   <none>   <none>           <none>
+Some pods are not ready
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ ### - T-Shoot tries
+ ##### - Verifying OpenStack pods state:
+```
+[boburciu@r220 ~]$ ssh ubuntu@rkem1
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+Last login: Fri Dec 11 21:16:08 2020 from 192.168.122.1
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$
+```
+ubuntu@rkem1:~$ ` kubectl get po --all-namespaces -o=wide | gawk 'match($3, /([0-9])+\/([0-9])+/, a) {if (a[1] < a [2] && $4 != "Completed") print $0}' | cat -n ` 
+```
+     1  ceph            ceph-mds-59d4564c65-4ljd7                           0/1     Init:0/2                0          3h53m   10.42.176.17      rkew5    <none>           <none>
+     2  ceph            ceph-mds-59d4564c65-kr5qx                           0/1     Init:0/2                0          3h53m   10.42.212.143     rkew6    <none>           <none>
+     3  ceph            ceph-osd-default-83945928-4j9lw                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.88    rkew6    <none>           <none>
+     4  ceph            ceph-osd-default-83945928-fvshr                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.141   rkew5    <none>           <none>
+     5  ceph            ceph-osd-default-83945928-mbhkr                     0/2     Init:CrashLoopBackOff   50         3h51m   192.168.122.142   rkew4    <none>           <none>
+     6  ceph            ceph-pool-checkpgs-1607717700-9tg9j                 0/1     Init:0/1                0          4h17m   192.168.122.88    rkew6    <none>           <none>
+     7  ceph            ceph-pool-checkpgs-1607717700-rgl8n                 0/1     Init:Error              0          5d20h   192.168.122.88    rkew6    <none>           <none>
+     8  ingress-nginx   default-http-backend-65dd5949d9-djs9t               0/1     NodeAffinity            0          11d     <none>            rkew3    <none>           <none>
+     9  kube-system     coredns-6f85d5fb88-t7nfs                            0/1     NodeAffinity            0          11d     <none>            rkew2    <none>           <none>
+    10  kube-system     ingress-cm57s                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    11  kube-system     ingress-klsxx                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    12  kube-system     ingress-ptqfz                                       0/1     Pending                 0          7d22h   <none>            <none>   <none>           <none>
+    13  kube-system     metrics-server-8449844bf-8smnh                      0/1     NodeAffinity            0          11d     <none>            rkew4    <none>           <none>
+    14  openstack       mariadb-ingress-7d8c66db8f-4v2cd                    0/1     Running                 1          5d20h   10.42.176.15      rkew5    <none>           <none>
+    15  openstack       mariadb-ingress-7d8c66db8f-k8ljv                    0/1     Running                 1          5d20h   10.42.212.142     rkew6    <none>           <none>
+    16  openstack       mariadb-ingress-7d8c66db8f-zs5bd                    0/1     Running                 1          5d20h   10.42.44.92       rkew4    <none>           <none>
+    17  openstack       mariadb-server-0                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    18  openstack       mariadb-server-1                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    19  openstack       mariadb-server-2                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+ubuntu@rkem1:~$
+```
+
+ ##### - Job=_ceph-rbd-pool_ & pod=_ceph-rbd-pool-_ is dependent on Ceph OSD:
+``` 
+
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n ceph logs ceph-rbd-pool-thw56 -c ceph-rbd-pool
+:
+:
++ EXPECTED_OSDS=3
++ REQUIRED_PERCENT_OF_OSDS=75
++ '[' 0 -gt 3 ']'
++ MIN_OSDS=2
++ '[' 2 -lt 1 ']'
++ '[' '' ']'
++ '[' 3 -eq 0 ']'
++ '[' 3 -ge 2 ']'
++ '[' 0 -ge 2 ']'
+Required number of OSDs (2) are NOT UP and IN status. Cluster shows OSD count=3, UP=0, IN=3
++ echo 'Required number of OSDs (2) are NOT UP and IN status. Cluster shows OSD count=3, UP=0, IN=3'
++ exit 1
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n ceph get jobs | grep ceph-rbd-pool
+ceph-rbd-pool                   0/1           9m23s      9m23s
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n ceph get pods | grep osd
+ceph-osd-default-83945928-4j9lw        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-default-83945928-fvshr        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-default-83945928-mbhkr        0/2     Init:CrashLoopBackOff   33         148m
+ceph-osd-keyring-generator-r9pw8       0/1     Completed               0          5d20h
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ ##### - Pods=_mariadb-server-_ pending for "_storageclass.storage.k8s.io "general" not found_"
+```
+
+    17  openstack       mariadb-server-0                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    18  openstack       mariadb-server-1                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+    19  openstack       mariadb-server-2                                    0/1     Pending                 0          5d20h   <none>            <none>   <none>           <none>
+
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n openstack get pods|  grep mariadb-server-
+mariadb-server-0                                    0/1     Pending     0          5d20h
+mariadb-server-1                                    0/1     Pending     0          5d20h
+mariadb-server-2                                    0/1     Pending     0          5d20h
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n openstack describe pod mariadb-server-1
+Name:           mariadb-server-1
+Namespace:      openstack
+Priority:       0
+Node:           <none>
+Labels:         application=mariadb
+                component=server
+                controller-revision-hash=mariadb-server-74cd64956
+                release_group=mariadb
+                statefulset.kubernetes.io/pod-name=mariadb-server-1
+Annotations:    configmap-bin-hash: cb0bb95d4dcade83796f9f4f5bbca8723ada30eb65f55d5d9930fb907c0a0eea
+                configmap-etc-hash: 05034f13b89a1ec3945984cc3209a9e1ef30dcb6f903cdd3783f37d0c2ddb991
+                mariadb-dbadmin-password-hash: 1e6d76f39aff6238267d343440e15ac49c0922ee715c5767bb3b2ef5efbb5394
+                mariadb-sst-password-hash: 1e6d76f39aff6238267d343440e15ac49c0922ee715c5767bb3b2ef5efbb5394
+                openstackhelm.openstack.org/release_uuid:
+Status:         Pending
+IP:
+IPs:            <none>
+Controlled By:  StatefulSet/mariadb-server
+Init Containers:
+  init:
+    Image:      quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      kubernetes-entrypoint
+    Environment:
+      POD_NAME:                    mariadb-server-1 (v1:metadata.name)
+      NAMESPACE:                   openstack (v1:metadata.namespace)
+      INTERFACE_NAME:              eth0
+      PATH:                        /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+      DEPENDENCY_SERVICE:
+      DEPENDENCY_DAEMONSET:
+      DEPENDENCY_CONTAINER:
+      DEPENDENCY_POD_JSON:
+      DEPENDENCY_CUSTOM_RESOURCE:
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+  mariadb-perms:
+    Image:      docker.io/openstackhelm/mariadb:latest-ubuntu_xenial
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      chown
+      -R
+      mysql:mysql
+      /var/lib/mysql
+    Environment:  <none>
+    Mounts:
+      /tmp from pod-tmp (rw)
+      /var/lib/mysql from mysql-data (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+Containers:
+  mariadb:
+    Image:       docker.io/openstackhelm/mariadb:latest-ubuntu_xenial
+    Ports:       3306/TCP, 4567/TCP
+    Host Ports:  0/TCP, 0/TCP
+    Command:
+      /tmp/start.py
+    Readiness:  exec [/tmp/readiness.sh] delay=30s timeout=15s period=30s #success=1 #failure=3
+    Environment:
+      POD_NAMESPACE:           openstack (v1:metadata.namespace)
+      MARIADB_REPLICAS:        3
+      POD_NAME_PREFIX:         mariadb-server
+      DISCOVERY_DOMAIN:        mariadb-discovery.openstack.svc.cluster.local
+      DIRECT_SVC_NAME:         mariadb-server
+      WSREP_PORT:              4567
+      STATE_CONFIGMAP:         mariadb-mariadb-state
+      MYSQL_DBADMIN_USERNAME:  root
+      MYSQL_DBADMIN_PASSWORD:  <set to the key 'MYSQL_DBADMIN_PASSWORD' in secret 'mariadb-dbadmin-password'>  Optional: false
+      MYSQL_DBSST_USERNAME:    sst
+      MYSQL_DBSST_PASSWORD:    <set to the key 'MYSQL_DBSST_PASSWORD' in secret 'mariadb-dbsst-password'>  Optional: false
+      MYSQL_DBAUDIT_USERNAME:  audit
+      MYSQL_DBAUDIT_PASSWORD:  <set to the key 'MYSQL_DBAUDIT_PASSWORD' in secret 'mariadb-dbaudit-password'>  Optional: false
+    Mounts:
+      /etc/mysql/admin_user.cnf from mariadb-secrets (ro,path="admin_user.cnf")
+      /etc/mysql/conf.d from mycnfd (rw)
+      /etc/mysql/conf.d/00-base.cnf from mariadb-etc (ro,path="00-base.cnf")
+      /etc/mysql/conf.d/99-force.cnf from mariadb-etc (ro,path="99-force.cnf")
+      /etc/mysql/my.cnf from mariadb-etc (ro,path="my.cnf")
+      /tmp from pod-tmp (rw)
+      /tmp/readiness.sh from mariadb-bin (ro,path="readiness.sh")
+      /tmp/start.py from mariadb-bin (ro,path="start.py")
+      /tmp/stop.sh from mariadb-bin (ro,path="stop.sh")
+      /var/lib/mysql from mysql-data (rw)
+      /var/run/mysqld from var-run (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from mariadb-mariadb-token-zbrgl (ro)
+Conditions:
+  Type           Status
+  PodScheduled   False
+Volumes:
+  mysql-data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  mysql-data-mariadb-server-1
+    ReadOnly:   false
+  pod-tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  mycnfd:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  var-run:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+  mariadb-bin:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      mariadb-bin
+    Optional:  false
+  mariadb-etc:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      mariadb-etc
+    Optional:  false
+  mariadb-secrets:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  mariadb-secrets
+    Optional:    false
+  mariadb-mariadb-token-zbrgl:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  mariadb-mariadb-token-zbrgl
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age                   From               Message
+  ----     ------            ----                  ----               -------
+  Warning  FailedScheduling  4m55s (x190 over 4h)  default-scheduler  0/8 nodes are available: 8 pod has unbound immediate PersistentVolumeClaims.
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n openstack describe pvc mysql-data-mariadb-server-1
+Name:          mysql-data-mariadb-server-1
+Namespace:     openstack
+StorageClass:  general
+Status:        Pending
+Volume:
+Labels:        application=mariadb
+               component=server
+               release_group=mariadb
+Annotations:   <none>
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:
+Access Modes:
+VolumeMode:    Filesystem
+Mounted By:    mariadb-server-1
+Events:
+  Type     Reason              Age                    From                         Message
+  ----     ------              ----                   ----                         -------
+  Warning  ProvisioningFailed  4m6s (x961 over 4h4m)  persistentvolume-controller  storageclass.storage.k8s.io "general" not found
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+
+ ##### - Checking Ceph deployment status, per [OSH Persistent-Storage guide](https://docs.openstack.org/openstack-helm/latest/troubleshooting/persistent-storage.html)
+ ubuntu@rkem1:/opt/openstack-helm$ ` MON_POD=$(kubectl get --no-headers pods -n=ceph -l="application=ceph,component=mon" | awk '{ print $1; exit }') ` <br/>
+ubuntu@rkem1:/opt/openstack-helm$ ` kubectl exec -n ceph ${MON_POD} -- ceph -s `
+```
+  cluster:
+    id:     dfecae40-3104-4bda-9cbe-a0fe46d9fc6e
+    health: HEALTH_WARN
+            3 osds down
+            1 host (3 osds) down
+            1 root (3 osds) down
+            Reduced data availability: 93 pgs inactive
+
+  services:
+    mon: 3 daemons, quorum rkew6,rkew5,rkew4 (age 4h)
+    mgr: device(active, starting, since 1.6687s)
+    osd: 3 osds: 0 up (since 3h), 3 in (since 5d)
+
+  data:
+    pools:   18 pools, 93 pgs
+    objects: 0 objects, 0 B
+    usage:   0 B used, 0 B / 0 B avail
+    pgs:     100.000% pgs unknown
+             93 unknown
+
+ubuntu@rkem1:/opt/openstack-helm$
+```
+
+ ##### - A pod=_ingress-_  is created by a _DaemonSet/ingress_ for each worker with _Node-Selector:  openstack-control-plane=enabled_, but the ports _Ports:       80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP_ are not open on the worker nodes
+```
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n kube-system describe po ingress-56vqk | tail
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  16s (x17 over 21m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n kube-system describe po ingress-88ssv | tail
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                 From               Message
+  ----     ------            ----                ----               -------
+  Warning  FailedScheduling  31s (x17 over 21m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@rkem1:/opt/openstack-helm$
+ubuntu@rkem1:/opt/openstack-helm$ kubectl -n kube-system describe DaemonSet/ingress
+Name:           ingress
+Selector:       app=ingress-api,application=ingress,component=server,release_group=ingress-kube-system
+Node-Selector:  openstack-control-plane=enabled
+Labels:         app=ingress-api
+                application=ingress
+                component=server
+                release_group=ingress-kube-system
+Annotations:    deprecated.daemonset.template.generation: 3
+                openstackhelm.openstack.org/release_uuid:
+Desired Number of Nodes Scheduled: 6
+Current Number of Nodes Scheduled: 6
+Number of Nodes Scheduled with Up-to-date Pods: 6
+Number of Nodes Scheduled with Available Pods: 0
+Number of Nodes Misscheduled: 0
+Pods Status:  0 Running / 6 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           app=ingress-api
+                    application=ingress
+                    component=server
+                    release_group=ingress-kube-system
+  Annotations:      configmap-bin-hash: 7a6b18fef96aa3d4d853faf80af396bc0fcf2c1326726ac33af1f20fb0328f65
+                    configmap-etc-hash: d6e97198fa89eaae0116024f077f9f5ab5730354a40d51a23befbb02ad797cc0
+                    openstackhelm.openstack.org/release_uuid:
+  Service Account:  ingress-kube-system-ingress
+  Init Containers:
+   init:
+    Image:      quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      kubernetes-entrypoint
+    Environment:
+      POD_NAME:                     (v1:metadata.name)
+      NAMESPACE:                    (v1:metadata.namespace)
+      INTERFACE_NAME:              eth0
+      PATH:                        /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+      DEPENDENCY_SERVICE:
+      DEPENDENCY_DAEMONSET:
+      DEPENDENCY_CONTAINER:
+      DEPENDENCY_POD_JSON:
+      DEPENDENCY_CUSTOM_RESOURCE:
+    Mounts:                        <none>
+  Containers:
+   ingress:
+    Image:       quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.32.0
+    Ports:       80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+    Command:
+      /tmp/ingress-controller.sh
+      start
+    Liveness:   http-get http://:10254/healthz delay=10s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:10254/healthz delay=0s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      POD_NAME:              (v1:metadata.name)
+      POD_NAMESPACE:         (v1:metadata.namespace)
+      PORT_HTTP:            80
+      PORT_HTTPS:           443
+      PORT_STATUS:          10246
+      PORT_STREAM:          10247
+      PORT_PROFILER:        10245
+      PORT_HEALTHZ:         10254
+      DEFAULT_SERVER_PORT:  8181
+      RELEASE_NAME:         ingress-kube-system
+      ERROR_PAGE_SERVICE:   ingress-error-pages
+      INGRESS_CLASS:        nginx-cluster
+    Mounts:
+      /tmp from pod-tmp (rw)
+      /tmp/ingress-controller.sh from ingress-bin (ro,path="ingress-controller.sh")
+  Volumes:
+   pod-tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:
+    SizeLimit:  <unset>
+   ingress-bin:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      ingress-bin
+    Optional:  false
+Events:
+  Type    Reason            Age   From                  Message
+  ----    ------            ----  ----                  -------
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-nr67n
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-5kp7z
+  Normal  SuccessfulCreate  28m   daemonset-controller  Created pod: ingress-7sr7f
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-56vqk
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-jmb69
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-gz9s2
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-88ssv
+  Normal  SuccessfulCreate  21m   daemonset-controller  Created pod: ingress-b526h
+ubuntu@rkem1:/opt/openstack-helm$
+
+
+[boburciu@r220 KVM-notes-proj]$ ssh ubuntu@rkem2
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 4.15.0-126-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Thu Dec 17 14:56:57 2020 from 192.168.122.1
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$ sudo iptables -t filter -L INPUT --line-numbers -n
+Chain INPUT (policy ACCEPT)
+num  target     prot opt source               destination
+1    cali-INPUT  all  --  0.0.0.0/0            0.0.0.0/0            /* cali:Cz_u1IQiXIMmKD4c */
+2    KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+3    KUBE-EXTERNAL-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes externally-visible service portals */
+4    KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+ubuntu@rkem1:~$ sudo iptables -t filter -L OUTPUT --line-numbers -n
+Chain OUTPUT (policy ACCEPT)
+num  target     prot opt source               destination
+1    cali-OUTPUT  all  --  0.0.0.0/0            0.0.0.0/0            /* cali:tVnHkvAo15HuiPy0 */
+2    KUBE-SERVICES  all  --  0.0.0.0/0            0.0.0.0/0            ctstate NEW /* kubernetes service portals */
+3    KUBE-FIREWALL  all  --  0.0.0.0/0            0.0.0.0/0
+ubuntu@rkem1:~$ 
+ubuntu@rkem1:~$ sudo ufw status verbose
+Status: inactive
+ubuntu@rkem1:~$ sudo ufw app list
+Available applications:
+  OpenSSH
+ubuntu@rkem1:~$
+```
+ubuntu@rkem1:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i the describe pod events are: ";echo ""; kubectl -n kube-system describe pod $i | tail -12 ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-dw8jc the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  75s (x79 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+-----------------------------------------------------------------------
+
+for ingress-n9spd the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  76s (x80 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+-----------------------------------------------------------------------
+
+for ingress-xhc57 the describe pod events are:
+
+Node-Selectors:  openstack-control-plane=enabled
+Tolerations:     node.kubernetes.io/disk-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/network-unavailable:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists
+                 node.kubernetes.io/pid-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/unreachable:NoExecute op=Exists
+                 node.kubernetes.io/unschedulable:NoSchedule op=Exists
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  77s (x79 over 101m)  default-scheduler  0/8 nodes are available: 2 node(s) didn't match node selector, 6 node(s) didn't have free ports for the requested pod ports.
+ubuntu@rkem1:~$
+```
+ ##### - How to verify what ports are expected by the _ingress-*_ pods:
+ubuntu@rkem1:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i Host Ports are: ";echo ""; kubectl -n kube-system describe pod $i | grep "Host Port" ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-b5gpc Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+-----------------------------------------------------------------------
+
+for ingress-phz8j Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+-----------------------------------------------------------------------
+
+for ingress-tjvhh Host Ports are:
+
+    Host Port:  <none>
+    Host Ports:  80/TCP, 443/TCP, 10246/TCP, 10254/TCP, 8181/TCP
+ubuntu@rkem1:~$
+ubuntu@rkem1:~$
+```
+
+ ##### - How to verify the open ports for all RKE worker nodes:
+[boburciu@r220 ~]$  ` cat /etc/ansible/hosts | grep -A6 ubuntu-rke-workers | tail -6 `
+```
+rkew1  ansible_user=root
+rkew2  ansible_user=root
+rkew3  ansible_user=root
+rkew4  ansible_user=root
+rkew5  ansible_user=root
+rkew6  ansible_user=root
+```
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$[boburciu@r220 ~]$
+[boburciu@r220 ~]$ ` for i in `cat /etc/ansible/hosts | grep -A6 ubuntu-rke-workers | tail -6 | awk '{print $1}'`; do echo "-----------------------------------------------------------------------";  echo "UFW open ports on $i"; echo ""; ssh ubuntu@$i sudo ufw status verbose; done `
+```
+-----------------------------------------------------------------------
+UFW open ports on rkew1
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew2
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew3
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew4
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew5
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+-----------------------------------------------------------------------
+UFW open ports on rkew6
+
+Status: active
+Logging: on (low)
+Default: allow (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+80/tcp                     ALLOW IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+10254/tcp                  ALLOW IN    Anywhere
+8181/tcp                   ALLOW IN    Anywhere
+::/tcp                     DENY IN     Anywhere (v6)
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+10254/tcp (v6)             ALLOW IN    Anywhere (v6)
+8181/tcp (v6)              ALLOW IN    Anywhere (v6)
+
+[boburciu@r220 ~]$
+```
+
+ ##### - Will run an Ansible playbook to open these ports, using [community.general.ufw – Manage Ubuntu firewall with UFW](https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html):
+[boburciu@r220 ~]$ ` ansible-galaxy collection install community.general `
+```
+Process install dependency map
+Starting collection install process
+Installing 'ansible.netcommon:1.4.1' to '/home/boburciu/.ansible/collections/ansible_collections/ansible/netcommon'
+Installing 'google.cloud:1.0.1' to '/home/boburciu/.ansible/collections/ansible_collections/google/cloud'
+Installing 'community.general:1.3.0' to '/home/boburciu/.ansible/collections/ansible_collections/community/general'
+Installing 'community.kubernetes:1.1.1' to '/home/boburciu/.ansible/collections/ansible_collections/community/kubernetes'
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$
+[boburciu@r220 ~]$ cd ~/OpenStackHelm_prereq/
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` cat open_OpenStackControl_ports.yml `
+```
+---
+- name: Open ports for rke worker nodes to be labeled as openstack-control-plane=enabled
+  hosts: ubuntu-rke-workers
+  tasks:
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        policy: allow
+
+    - name: Allow all access to 80/TCP
+      community.general.ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Allow all access to 443/TCP
+      community.general.ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Allow all access to 10254/TCP
+      community.general.ufw:
+        rule: allow
+        port: '10254'
+        proto: tcp
+
+    - name: Allow all access to 8181/TCP
+      community.general.ufw:
+        rule: allow
+        port: '8181'
+        proto: tcp
+
+    - name: Deny all IPv6 TCP traffic, to only permit IPv4
+      community.general.ufw:
+        rule: deny
+        proto: tcp
+        to_ip: "::"
+        insert: 0
+        insert_relative_to: first-ipv6
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+[boburciu@r220 OpenStackHelm_prereq]$ ` ansible-playbook open_OpenStackControl_ports.yml -v `
+```
+PLAY RECAP *************************************************************************************************************************
+rkew1                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew2                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew3                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew4                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew5                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+rkew6                      : ok=7    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+[boburciu@r220 OpenStackHelm_prereq]$
+```
+
+ ##### - Delete the _ingress-*_pods to try again use the new ports on workers:
+ubuntu@rkem1:~$ ` for i in `kubectl -n kube-system get po | grep ingress | grep -Ev 'error|rke' | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i the describe pod events are: ";echo ""; kubectl -n kube-system delete pod $i  ;done `
+```
+-----------------------------------------------------------------------
+
+for ingress-dw8jc :
+
+pod "ingress-dw8jc" deleted
+-----------------------------------------------------------------------
+
+for ingress-n9spd :
+
+pod "ingress-n9spd" deleted
+-----------------------------------------------------------------------
+
+for ingress-xhc57 :
+
+pod "ingress-xhc57" deleted
+ubuntu@rkem1:~$
+```
+
+ ##### - Get all pod ports and their NodePorts used already by pods sitting on a paritcular node:
+ubuntu@rkem1:~$ ` for i in `kubectl -n kube-system get pods -o=wide --field-selector spec.nodeName=rkew4 | tail -n +2 | awk '{print $1}'`; do echo "-----------------------------------------------------------------------"; echo "";echo "for $i Host Ports are: ";echo ""; kubectl -n kube-system describe pod $i | grep "Port" ;done `
+```
+-----------------------------------------------------------------------
+
+for calico-node-2b4f8 Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:          <none>
+    Host Port:     <none>
+    Port:           <none>
+    Host Port:      <none>
+    Port:           <none>
+    Host Port:      <none>
+-----------------------------------------------------------------------
+
+for ingress-error-pages-667b646495-lxt9z Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:           8080/TCP
+    Host Port:      0/TCP
+-----------------------------------------------------------------------
+
+for ingress-error-pages-667b646495-np9ms Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+    Port:           8080/TCP
+    Host Port:      0/TCP
+-----------------------------------------------------------------------
+
+for metrics-server-8449844bf-2zpxm Host Ports are:
+
+    Port:          <none>
+    Host Port:     <none>
+-----------------------------------------------------------------------
+
+for tiller-deploy-7b56c8dfb7-7jsjl Host Ports are:
+
+    Ports:          44134/TCP, 44135/TCP
+    Host Ports:     0/TCP, 0/TCP
+ubuntu@rkem1:~$
+```
